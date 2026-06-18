@@ -1,0 +1,114 @@
+/* 全域基本樣式：打造粉紅泡泡氛圍 */
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #ffe6eb; /* 浪漫粉底色 */
+    font-family: 'Microsoft JhengHei', sans-serif;
+    overflow: hidden; /* 防止閃躲按鈕跑出螢幕時出現滾動條 */
+}
+
+/* 主容器置中與陰影 */
+.container {
+    text-align: center;
+    padding: 30px;
+    max-width: 90%;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 10px 30px rgba(255, 77, 109, 0.1);
+}
+
+/* 標題文字樣式與平滑過渡 */
+h1 {
+    color: #ff4d6d;
+    font-size: 2.2rem;
+    margin-bottom: 40px;
+    line-height: 1.4;
+    transition: all 0.3s ease;
+}
+
+/* 按鈕排列區塊 */
+.btn-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    min-height: 250px; /* 預留空間給放大後的願意按鈕 */
+}
+
+/* 按鈕基礎共用樣式 */
+.btn {
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s ease-out; /* 讓縮放過程有平滑動畫 */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* 「願意」按鈕樣式 */
+.btn-yes {
+    background-color: #4cc9f0;
+    color: white;
+}
+.btn-yes:hover {
+    background-color: #4361ee;
+    transform: scale(1.05);
+}
+
+/* 「不願意」按鈕樣式 */
+.btn-no {
+    background-color: #ff758f;
+    color: white;
+}
+
+/* 隱藏元素專用 Class */
+.hidden {
+    display: none !important;
+}
+
+/* 答應後的驚喜區塊動畫 */
+#celebration {
+    animation: fadeIn 1s ease-in-out forwards;
+}
+#celebration h2 {
+    color: #ff4d6d;
+    margin-top: 20px;
+}
+.celebrate-gif {
+    max-width: 200px;
+    border-radius: 15px;
+}
+
+/* 愛心跳動動畫 */
+.heart {
+    font-size: 5rem;
+    animation: beat 0.5s infinite alternate;
+}
+
+/* 成功時的灑花碎片 */
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    animation: fall 3s linear infinite;
+    border-radius: 50%;
+}
+
+/* 動態特效 Keyframes 幀動畫 */
+@keyframes beat {
+    to { transform: scale(1.2); }
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fall {
+    to { transform: translateY(105vh) rotate(360deg); }
+}
