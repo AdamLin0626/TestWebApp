@@ -25,14 +25,19 @@ export default class View {
 
     initEventListeners() {
         // 頁籤切換
-        this.tabBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                this.tabBtns.forEach(b => b.classList.remove('active'));
-                this.tabContents.forEach(c => c.classList.remove('active'));
-                e.target.classList.add('active');
-                document.getElementById(e.target.dataset.target).classList.add('active');
-            });
+        // view.js 中的頁籤切換邏輯
+    this.tabBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            // 改用 e.currentTarget 避免點到按鈕內部的字或圖示而報錯
+            const targetBtn = e.currentTarget; 
+            
+            this.tabBtns.forEach(b => b.classList.remove('active'));
+            this.tabContents.forEach(c => c.classList.remove('active'));
+            
+            targetBtn.classList.add('active');
+            document.getElementById(targetBtn.dataset.target).classList.add('active');
         });
+    });
 
         // 集數輸入框顯示邏輯
         this.addStatus.addEventListener('change', () => {

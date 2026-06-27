@@ -16,9 +16,10 @@ export default class Model {
         localStorage.clear();
     }
 
+    // 在 model.js 中，把 requestNotionProxy 改寫，讓它自行處理 HTTP 狀態
     async requestNotionProxy(url, method, bodyData = null) {
         const creds = this.getCredentials();
-        if (!creds) throw new Error("NO_CREDENTIALS");
+        if (!creds) throw new Error("NO_CREDENTIALS");  
 
         const proxyUrl = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
         const config = {
@@ -30,10 +31,18 @@ export default class Model {
             }
         };
         if (bodyData) config.body = JSON.stringify(bodyData);
-        
-        return await fetch(proxyUrl, config);
-    }
 
+        const response = await fetch(proxyUrl, config);
+        const data = await response.json(); 
+
+        // 如果 Notion 回傳失敗，Model 負責拋出錯誤，把 HTTP 概念封裝起來
+        if (!response.ok) {
+            throw new Error(data.message || "請求失敗");
+        }
+
+        return data; // 只回傳乾淨的純資料給 Controller
+    }
+    
     async addPage(payload) {
         return await this.requestNotionProxy(`https://api.notion.com/v1/pages`, "POST", payload);
     }

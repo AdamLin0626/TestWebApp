@@ -26,38 +26,29 @@ export default class Controller {
         return true;
     }
 
+    // 在 controller.js 中，以 handleAddMovie 為例：
     async handleAddMovie(data) {
         if (!this.checkCredentials()) return;
-        if (!data.title) return this.view.showAlert("請填寫片名！");
+        if (!data.title) return this.view.showAlert("請填寫片名！");    
 
         const creds = this.model.getCredentials();
-        let remark = "";
-        if (data.status === "進行中") {
-            remark = data.episode ? `第${data.episode}集` : "進行中";
-        }
+        let remark = (data.status === "進行中" && data.episode) ? `第${data.episode}集` : (data.status === "進行中" ? "進行中" : "");   
 
         const payload = {
             "parent": { "database_id": creds.dbId },
             "properties": {
-                "片名": { "title": [{ "text": { "content": data.title } }] },
-                "國家": { "select": { "name": data.country } },
-                "影片類型": { "select": { "name": data.type } },
-                "進度": { "status": { "name": data.status } },
-                "備註": { "rich_text": [{ "text": { "content": remark } }] }
+                /* ...原本的 payload 設定... */
             }
-        };
+        };  
 
         try {
-            const res = await this.model.addPage(payload);
-            if (res.ok) {
-                this.view.showAlert(`新增成功！\n名稱：${data.title}\n進度：${data.status}`);
-                this.view.clearAddInputs();
-            } else {
-                const err = await res.json();
-                this.view.showAlert(`錯誤：${err.message}`);
-            }
+            // Controller 只需要呼叫 Model，不用再管 HTTP Response 了！
+            await this.model.addPage(payload); 
+            this.view.showAlert(`新增成功！\n名稱：${data.title}\n進度：${data.status}`);
+            this.view.clearAddInputs();
         } catch (e) {
-            this.view.showAlert(`連線失敗: ${e.message}`);
+            // 所有錯誤（包含 API 失敗）都在這裡被 View 攔截並顯示
+            this.view.showAlert(`處理失敗: ${e.message}`);
         }
     }
 
