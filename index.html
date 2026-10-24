@@ -1,87 +1,209 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>我們的片單 (MVC架構版)</title>
-    <link rel="stylesheet" href="theme/style.css">
-</head>
-<body>
+export default function MountainPlanner() {
+  const gears = [
+    { name: "Osprey Talon 44", category: "背包", weight: 1200, price: 6800 },
+    { name: "Naturehike 雲尚2", category: "帳篷", weight: 1500, price: 3800 },
+    { name: "Montbell 羽絨衣", category: "保暖", weight: 280, price: 6500 },
+    { name: "Black Diamond 頭燈", category: "照明", weight: 80, price: 1800 },
+  ];
 
-<div class="app-container">
-    <h1>🎬 我們的片單</h1>
-    <div class="version">v3.0.0 (MVC 架構重構版)</div>
+  const totalWeight = gears.reduce((a, b) => a + b.weight, 0);
+  const totalPrice = gears.reduce((a, b) => a + b.price, 0);
 
-    <!-- 🗂️ 頁籤切換列 -->
-    <div class="tab-container">
-        <button class="tab-btn active" data-target="tab-main">🎬 影片管理</button>
-        <button class="tab-btn" data-target="tab-settings">⚙️ 系統設定</button>
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="grid lg:grid-cols-3 gap-6 p-6">
+
+        {/* 左側 */}
+        <div className="bg-slate-900 rounded-3xl p-5 shadow-xl">
+          <h2 className="text-xl font-bold mb-4">🏔 我的裝備庫</h2>
+
+          <input
+            placeholder="搜尋裝備..."
+            className="w-full bg-slate-800 rounded-xl px-3 py-2 mb-4"
+          />
+
+          <div className="space-y-3">
+            {gears.map((gear) => (
+              <div
+                key={gear.name}
+                className="bg-slate-800 p-3 rounded-xl flex justify-between"
+              >
+                <div>
+                  <p className="font-medium">{gear.name}</p>
+                  <p className="text-sm text-gray-400">{gear.category}</p>
+                </div>
+
+                <div className="text-right text-sm">
+                  <p>{gear.weight}g</p>
+                  <p className="text-green-400">
+                    ${gear.price.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-semibold">
+            + 新增裝備
+          </button>
+        </div>
+
+        {/* 中間 */}
+        <div className="bg-slate-900 rounded-3xl p-5 shadow-xl">
+          <h2 className="text-xl font-bold mb-4">
+            🤖 AI 登山規劃
+          </h2>
+
+          <div className="space-y-4">
+            <div>
+              <label className="text-gray-400 text-sm">
+                路線
+              </label>
+              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
+                <option>雪山主東峰</option>
+                <option>奇萊南華</option>
+                <option>嘉明湖</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-gray-400 text-sm">
+                季節
+              </label>
+              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
+                <option>春季</option>
+                <option>夏季</option>
+                <option selected>冬季</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-gray-400 text-sm">
+                天數
+              </label>
+              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
+                <option>1天</option>
+                <option selected>2天1夜</option>
+                <option>3天2夜</option>
+              </select>
+            </div>
+
+            <button className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold">
+              AI 生成裝備建議
+            </button>
+          </div>
+
+          <div className="mt-8">
+            <h3 className="font-semibold mb-3">
+              AI 建議攜帶
+            </h3>
+
+            <div className="space-y-2">
+              {[
+                "登山背包",
+                "羽絨衣",
+                "頭燈",
+                "雨衣",
+                "睡袋",
+                "登山杖",
+              ].map((item) => (
+                <div
+                  key={item}
+                  className="bg-slate-800 rounded-xl p-3 flex items-center gap-2"
+                >
+                  ✅ {item}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 p-4 bg-amber-900/30 border border-amber-700 rounded-xl">
+              ⚠️ 12月雪山夜間可能低於 0°C
+              <br />
+              建議攜帶保暖層與備用手套
+            </div>
+          </div>
+        </div>
+
+        {/* 右側 */}
+        <div className="space-y-6">
+
+          <div className="bg-slate-900 rounded-3xl p-5">
+            <h2 className="text-xl font-bold mb-4">
+              🎒 背包分析
+            </h2>
+
+            <div className="text-center">
+              <div className="text-5xl font-bold text-emerald-400">
+                {(totalWeight / 1000).toFixed(1)}
+              </div>
+              <div className="text-gray-400">
+                kg 總重量
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <div className="flex justify-between">
+                <span>裝備總價值</span>
+                <span className="text-green-400">
+                  ${totalPrice.toLocaleString()}
+                </span>
+              </div>
+
+              <div className="flex justify-between">
+                <span>AI 評分</span>
+                <span className="font-bold text-blue-400">
+                  82 / 100
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900 rounded-3xl p-5">
+            <h3 className="font-bold mb-4">
+              📊 AI 分析
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <p>保暖能力</p>
+                <div className="text-yellow-400">
+                  ★★★★★
+                </div>
+              </div>
+
+              <div>
+                <p>安全性</p>
+                <div className="text-yellow-400">
+                  ★★★★☆
+                </div>
+              </div>
+
+              <div>
+                <p>輕量化</p>
+                <div className="text-yellow-400">
+                  ★★☆☆☆
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-900/20 border border-red-700 rounded-3xl p-5">
+            <h3 className="font-bold mb-2">
+              🚨 可減重建議
+            </h3>
+
+            <ul className="space-y-2 text-sm">
+              <li>• 備用衣物 -600g</li>
+              <li>• 露營椅 -900g</li>
+            </ul>
+
+            <div className="mt-4 text-red-300 font-semibold">
+              可減少 1.5kg
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
-
-    <!-- ========================================== -->
-    <!-- 🎬 分頁一：主程式功能面 -->
-    <!-- ========================================== -->
-    <div id="tab-main" class="tab-content active">
-        <div class="section">
-            <div class="section-title">📌 功能一：新增播放清單</div>
-            <input type="text" id="add-title" placeholder="請輸入片名">
-            <select id="add-country">
-                <option value="台">台</option><option value="陸">陸</option>
-                <option value="港">港</option><option value="日韓">日韓</option>
-                <option value="東南亞">東南亞</option><option value="洋">洋</option>
-            </select>
-            <select id="add-type">
-                <option value="電影">電影</option><option value="劇">劇</option>
-                <option value="卡通/動漫">卡通/動漫</option>
-            </select>
-            <select id="add-status">
-                <option value="看完">看完</option>
-                <option value="沒看" selected>沒看</option>
-                <option value="進行中">進行中</option>
-            </select>
-            <input type="text" id="add-episode" placeholder="第幾集？ (選進行中才需填寫)" style="display:none;">
-            <button id="btn-add">確認新增至 Notion</button>
-        </div>
-
-        <div class="section">
-            <div class="section-title">🔍 功能二：查詢進度 / 連結</div>
-            <button id="btn-query" class="btn-query">點擊查詢當前所有片單</button>
-        </div>
-
-        <div class="section">
-            <div class="section-title">🔄 功能三：更新影片進度</div>
-            <input type="text" id="update-title" placeholder="請輸入要更新的精確片名">
-            <select id="update-status">
-                <option value="看完">看完</option>
-                <option value="沒看">沒看</option>
-                <option value="進行中" selected>進行中</option>
-            </select>
-            <input type="text" id="update-remark" placeholder="請輸入進度備註 (非進行中則留空)">
-            <button id="btn-update" class="btn-update">確認更新進度</button>
-        </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- ⚙️ 分頁二：獨立設定密鑰面 -->
-    <!-- ========================================== -->
-    <div id="tab-settings" class="tab-content">
-        <div class="section">
-            <div class="section-title">🔑 個人 Notion 密鑰設定</div>
-            <p class="hint-text">請輸入您個人的 Notion 整合憑證。此資料將加密安全地保存在您本機瀏覽器中。</p>
-            
-            <label class="setting-label">Notion Integration Token:</label>
-            <input type="password" id="cfg-token" placeholder="secret_ 開頭的字串">
-            
-            <label class="setting-label">Database ID:</label>
-            <input type="text" id="cfg-dbid" placeholder="32位元的資料庫ID">
-            
-            <button id="btn-save-settings" class="btn-save">儲存設定</button>
-            <button id="btn-clear-settings" class="btn-danger">清除本機全部資料</button>
-        </div>
-    </div>
-</div>
-
-<!-- 引入 App 進入點，必須設定 type="module" -->
-<script type="module" src="js/app.js"></script>
-</body>
-</html>
+  );
+}
