@@ -1,209 +1,1130 @@
-export default function MountainPlanner() {
-  const gears = [
-    { name: "Osprey Talon 44", category: "背包", weight: 1200, price: 6800 },
-    { name: "Naturehike 雲尚2", category: "帳篷", weight: 1500, price: 3800 },
-    { name: "Montbell 羽絨衣", category: "保暖", weight: 280, price: 6500 },
-    { name: "Black Diamond 頭燈", category: "照明", weight: 80, price: 1800 },
-  ];
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#101510">
+    <title>Fourfold — 1A2B</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #101510;
+        --panel: #191f19;
+        --panel-raised: #202820;
+        --line: #303a30;
+        --text: #f0f1e9;
+        --muted: #9da69a;
+        --green: #c5f277;
+        --green-dark: #25351b;
+        --orange: #e7a26e;
+        --danger: #ff9185;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
 
-  const totalWeight = gears.reduce((a, b) => a + b.weight, 0);
-  const totalPrice = gears.reduce((a, b) => a + b.price, 0);
+      * { box-sizing: border-box; }
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-white">
-      <div className="grid lg:grid-cols-3 gap-6 p-6">
+      body {
+        min-width: 0;
+        min-height: 100vh;
+        margin: 0;
+        background:
+          radial-gradient(ellipse at 86% 5%, rgba(128, 166, 81, .10), transparent 34rem),
+          var(--bg);
+      }
 
-        {/* 左側 */}
-        <div className="bg-slate-900 rounded-3xl p-5 shadow-xl">
-          <h2 className="text-xl font-bold mb-4">🏔 我的裝備庫</h2>
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      button:focus-visible, input:focus-visible {
+        outline: 2px solid var(--green);
+        outline-offset: 3px;
+      }
 
-          <input
-            placeholder="搜尋裝備..."
-            className="w-full bg-slate-800 rounded-xl px-3 py-2 mb-4"
-          />
+      .page { width: min(100% - 40px, 1040px); margin: 0 auto; }
+      .topbar {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(157, 166, 154, .16);
+      }
+      .brand { display: flex; align-items: center; gap: 11px; font-size: 15px; font-weight: 700; letter-spacing: -.03em; }
+      .brand-mark {
+        display: grid;
+        width: 31px;
+        height: 31px;
+        place-items: center;
+        border-radius: 9px;
+        background: var(--green);
+        color: #172012;
+        font-family: var(--mono);
+        font-size: 13px;
+        font-weight: 800;
+      }
+      .connection { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+      .connection-dot { width: 7px; height: 7px; border-radius: 50%; background: #747d71; }
+      .connection[data-state="connected"] .connection-dot { background: var(--green); box-shadow: 0 0 10px rgba(197, 242, 119, .55); }
+      .connection[data-state="connecting"] .connection-dot { background: var(--orange); }
 
-          <div className="space-y-3">
-            {gears.map((gear) => (
-              <div
-                key={gear.name}
-                className="bg-slate-800 p-3 rounded-xl flex justify-between"
-              >
-                <div>
-                  <p className="font-medium">{gear.name}</p>
-                  <p className="text-sm text-gray-400">{gear.category}</p>
-                </div>
+      .intro { padding: 66px 0 34px; }
+      .eyebrow { color: var(--green); font: 11px var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+      h1 { margin: 15px 0 12px; font-size: clamp(43px, 8vw, 72px); font-weight: 600; letter-spacing: -.075em; line-height: .98; }
+      h1 span { color: var(--green); }
+      .intro p { max-width: 520px; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.75; }
+      .intro .instructions { margin-top: 21px; color: #c0c6bb; font-size: 13px; }
+      .instructions strong { color: var(--green); font-family: var(--mono); font-weight: 600; }
 
-                <div className="text-right text-sm">
-                  <p>{gear.weight}g</p>
-                  <p className="text-green-400">
-                    ${gear.price.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            ))}
+      .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 6px 0 28px; }
+      .card { border: 1px solid var(--line); border-radius: 15px; background: rgba(25, 31, 25, .92); }
+      .setup-card { min-height: 252px; padding: 24px; }
+      .card-kicker { color: var(--muted); font: 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+      h2, h3, p { margin-top: 0; }
+      .setup-card h2 { margin: 11px 0 8px; font-size: 21px; font-weight: 550; letter-spacing: -.04em; }
+      .setup-card > p { min-height: 40px; margin-bottom: 19px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+      .field-label { display: block; margin: 0 0 7px; color: #c4c9bf; font-size: 12px; }
+      .field-row { display: flex; gap: 8px; }
+      .text-input {
+        width: 100%;
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #121712;
+        color: var(--text);
+        padding: 11px 12px;
+      }
+      .text-input::placeholder { color: #6f786d; }
+      .room-input { font-family: var(--mono); letter-spacing: .13em; text-transform: uppercase; }
+      .button {
+        display: inline-flex;
+        min-height: 41px;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        padding: 0 14px;
+        font-size: 12px;
+        font-weight: 650;
+        transition: background .16s ease, border-color .16s ease, transform .16s ease;
+      }
+      .button:hover:not(:disabled) { transform: translateY(-1px); }
+      .button:disabled { cursor: not-allowed; opacity: .46; }
+      .button-primary { background: var(--green); color: #172012; }
+      .button-primary:hover:not(:disabled) { background: #d3fa91; }
+      .button-secondary { border-color: var(--line); background: var(--panel-raised); color: var(--text); }
+      .button-secondary:hover:not(:disabled) { border-color: #53614c; }
+      .button-quiet { border-color: var(--line); background: transparent; color: var(--muted); }
+      .room-input-wrap { flex: 1; }
+      .name-row { margin-bottom: 14px; }
+
+      .notice {
+        display: flex;
+        gap: 12px;
+        margin: 0 0 62px;
+        border: 1px solid rgba(231, 162, 110, .2);
+        border-radius: 11px;
+        background: rgba(231, 162, 110, .055);
+        padding: 14px 16px;
+        color: #bdad9e;
+        font-size: 11px;
+        line-height: 1.65;
+      }
+      .notice strong { color: #e9c2a1; font-weight: 600; }
+      .notice-icon { color: var(--orange); }
+
+      .game { padding: 42px 0 64px; }
+      .game[hidden], .setup[hidden] { display: none; }
+      .room-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+      .room-heading h1 { margin: 9px 0 0; font-size: clamp(35px, 6vw, 49px); }
+      .room-tools { display: flex; align-items: center; gap: 9px; }
+      .room-code { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel); padding: 0 12px; color: var(--muted); font-size: 11px; }
+      .room-code strong { color: var(--green); font: 13px var(--mono); letter-spacing: .12em; }
+      .game-grid { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 14px; align-items: start; }
+      .main-column, .side-column { display: grid; gap: 14px; }
+      .game-card { padding: 22px; }
+      .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+      .section-heading h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+      .step-label { color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; }
+      .players { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .player-card { min-height: 73px; display: flex; align-items: center; gap: 11px; border: 1px solid var(--line); border-radius: 10px; background: #151a15; padding: 12px; }
+      .player-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border: 1px solid #3a4834; border-radius: 50%; background: var(--green-dark); color: var(--green); font: 12px var(--mono); }
+      .player-details { min-width: 0; flex: 1; }
+      .player-name { overflow: hidden; color: var(--text); font-size: 12px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+      .player-status { margin-top: 5px; color: var(--muted); font-size: 10px; }
+      .player-state { color: var(--green); font-size: 10px; }
+      .player-card.is-turn { border-color: #778d55; box-shadow: inset 0 0 0 1px rgba(197, 242, 119, .13); }
+      .waiting-slot { color: #747d71; font-size: 11px; }
+
+      .secret-panel { display: flex; align-items: end; gap: 10px; border: 1px solid var(--line); border-radius: 11px; background: #151a15; padding: 15px; }
+      .secret-copy { flex: 1; }
+      .secret-copy strong { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 550; }
+      .secret-copy span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+      .secret-field { width: 124px; }
+      .digits-input { text-align: center; font: 19px var(--mono); letter-spacing: .24em; }
+      .game-banner { border: 1px solid rgba(197, 242, 119, .22); border-radius: 10px; background: rgba(197, 242, 119, .055); padding: 13px 15px; color: #dbe8ca; font-size: 12px; line-height: 1.6; }
+      .game-banner[data-kind="error"] { border-color: rgba(255, 145, 133, .3); background: rgba(255, 145, 133, .06); color: #ffc0b8; }
+      .game-banner[data-kind="neutral"] { border-color: var(--line); background: #151a15; color: var(--muted); }
+      .turn-panel { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+      .turn-panel h2 { margin: 5px 0 0; font-size: 19px; font-weight: 550; letter-spacing: -.03em; }
+      .turn-number { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line); border-radius: 11px; color: var(--green); font: 16px var(--mono); }
+      .guess-row { display: flex; gap: 9px; margin-top: 17px; }
+      .guess-row[hidden] { display: none; }
+      .guess-row .text-input { max-width: 210px; }
+      .history-list { display: grid; gap: 7px; }
+      .history-item { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; min-height: 45px; border-radius: 8px; background: #151a15; padding: 8px 11px; }
+      .history-index { color: #788172; font: 10px var(--mono); }
+      .history-player { color: var(--muted); font-size: 11px; }
+      .history-player strong { color: var(--text); font-weight: 500; }
+      .history-guess { margin-top: 3px; color: var(--green); font: 12px var(--mono); letter-spacing: .12em; }
+      .history-result { color: var(--text); font: 11px var(--mono); white-space: nowrap; }
+      .history-result span { color: var(--green); }
+      .empty-history { padding: 24px 12px; color: #798273; text-align: center; font-size: 11px; }
+      .side-column .game-card { padding: 19px; }
+      .rules { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+      .rules li { display: flex; gap: 10px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+      .rule-mark { width: 20px; flex: 0 0 auto; color: var(--green); font: 11px var(--mono); }
+      .rules strong { color: #e3e7dd; font-weight: 550; }
+      .privacy-copy { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+      .privacy-copy strong { color: #e3e7dd; font-weight: 550; }
+      .footer { display: flex; justify-content: space-between; gap: 14px; border-top: 1px solid rgba(157, 166, 154, .14); padding: 18px 0 25px; color: #747d71; font-size: 10px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+
+      @media (max-width: 720px) {
+        .page { width: min(100% - 28px, 540px); }
+        .intro { padding-top: 48px; }
+        .setup-grid { grid-template-columns: 1fr; }
+        .setup-card { min-height: auto; }
+        .setup-card > p { min-height: auto; }
+        .notice { margin-bottom: 42px; }
+        .game-grid { grid-template-columns: 1fr; }
+        .room-heading { flex-direction: column; }
+        .room-tools { width: 100%; }
+        .room-code { flex: 1; }
+      }
+      @media (max-width: 430px) {
+        .page { width: min(100% - 22px, 540px); }
+        .setup-card, .game-card { padding: 17px; }
+        .players { grid-template-columns: 1fr 1fr; }
+        .secret-panel { align-items: stretch; flex-wrap: wrap; }
+        .secret-copy { flex-basis: calc(100% - 2px); }
+        .secret-field { flex: 1; }
+        .room-tools { flex-wrap: wrap; }
+        .room-tools .button { flex: 1; }
+      }
+      @media (max-width: 600px) {
+        body {
+          min-height: 100svh;
+          background:
+            radial-gradient(ellipse at 86% 0, rgba(128, 166, 81, .10), transparent 25rem),
+            var(--bg);
+        }
+        .page { width: min(100% - 28px, 480px); }
+        .topbar {
+          position: sticky;
+          z-index: 2;
+          top: 0;
+          min-height: 58px;
+          padding-top: env(safe-area-inset-top);
+          border-color: rgba(157, 166, 154, .12);
+          background: rgba(16, 21, 16, .94);
+          backdrop-filter: blur(14px);
+        }
+        .brand { gap: 9px; font-size: 14px; }
+        .brand-mark { width: 29px; height: 29px; }
+        .connection { gap: 7px; font-size: 11px; }
+        .intro { padding: 35px 0 23px; }
+        .eyebrow { font-size: 10px; }
+        .intro h1 { margin: 12px 0 10px; font-size: clamp(45px, 13vw, 58px); }
+        .intro > p:not(.instructions) { font-size: 14px; line-height: 1.6; }
+        .intro .instructions { margin-top: 15px; font-size: 12px; line-height: 1.7; }
+        .setup-grid { gap: 11px; padding: 3px 0 17px; }
+        .setup-card { min-height: 0; padding: 19px; border-radius: 13px; }
+        .setup-card h2 { margin: 9px 0 6px; font-size: 19px; }
+        .setup-card > p { min-height: 0; margin-bottom: 16px; font-size: 12px; }
+        .text-input { min-height: 48px; border-radius: 10px; padding: 12px; font-size: 16px; }
+        .button { min-height: 48px; border-radius: 10px; padding: 0 15px; font-size: 13px; touch-action: manipulation; }
+        .notice { margin-bottom: 33px; padding: 12px; font-size: 10px; }
+        .footer { padding: 15px 0 max(20px, env(safe-area-inset-bottom)); font-size: 9px; }
+        .game { padding: 23px 0 36px; }
+        .room-heading {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+        .room-heading > div:first-child { min-width: 0; }
+        .room-heading .eyebrow { font-size: 9px; }
+        .room-heading h1 { margin: 5px 0 0; font-size: clamp(24px, 7vw, 31px); letter-spacing: -.06em; }
+        .room-tools { grid-column: 1 / -1; width: 100%; gap: 8px; }
+        .room-code { min-height: 46px; gap: 8px; justify-content: center; padding: 0 10px; font-size: 10px; }
+        .room-tools .button { min-height: 46px; }
+        .game-grid { display: block; }
+        .main-column, .side-column { gap: 11px; }
+        .main-column { display: flex; flex-direction: column; }
+        .main-column > :nth-child(1) { order: 0; }
+        .main-column > :nth-child(3) { order: 1; }
+        .main-column > :nth-child(2) { order: 2; }
+        .main-column > :nth-child(4) { order: 3; }
+        .side-column { margin-top: 11px; }
+        .game-card, .side-column .game-card { padding: 16px; border-radius: 13px; }
+        .section-heading { margin-bottom: 13px; }
+        .section-heading h2 { font-size: 14px; }
+        .step-label { font-size: 9px; }
+        .players { gap: 8px; }
+        .player-card { min-width: 0; min-height: 68px; gap: 8px; padding: 9px; }
+        .player-avatar { width: 30px; height: 30px; font-size: 10px; }
+        .player-name { font-size: 11px; }
+        .player-status { font-size: 9px; }
+        .player-state { font-size: 8px; }
+        .waiting-slot { font-size: 10px; }
+        .secret-panel { align-items: center; gap: 11px; padding: 12px; }
+        .secret-copy { flex-basis: 100%; }
+        .secret-copy strong { font-size: 12px; }
+        .secret-copy span { font-size: 11px; }
+        .secret-field { width: 105px; flex: 0 0 105px; }
+        .digits-input { min-height: 50px; font-size: 19px; }
+        .secret-panel .button { flex: 1; }
+        .turn-panel h2 { margin-top: 4px; font-size: 18px; }
+        .turn-number { width: 40px; height: 40px; }
+        .game-banner { margin-top: 2px; padding: 12px; font-size: 12px; }
+        .guess-row { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 12px; }
+        .guess-row .text-input { max-width: none; width: 100%; }
+        .guess-row .button { width: 100%; min-height: 50px; }
+        .history-item { min-height: 52px; grid-template-columns: 25px minmax(0, 1fr) auto; gap: 8px; padding: 8px; }
+        .history-player { font-size: 10px; }
+        .history-guess { font-size: 13px; }
+        .history-result { font-size: 12px; }
+        .rules { gap: 11px; }
+        .rules li, .privacy-copy { font-size: 11px; }
+      }
+      @media (max-width: 360px) {
+        .player-status { overflow: hidden; max-width: 76px; text-overflow: ellipsis; white-space: nowrap; }
+        .room-tools { gap: 6px; }
+        .room-code { gap: 5px; padding: 0 7px; font-size: 9px; }
+        .room-code strong { font-size: 12px; }
+        .room-tools .button { padding: 0 9px; font-size: 11px; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+      }
+      .app-home { width: min(100% - 32px, 430px); margin: 0 auto; padding: 24px 0 40px; }
+      .home-title { margin: 0 0 26px; font-size: 30px; font-weight: 650; letter-spacing: -.06em; }
+      .home-field { margin-bottom: 20px; }
+      .home-field .text-input { min-height: 52px; }
+      .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 26px; border: 1px solid var(--line); border-radius: 12px; background: #121712; padding: 4px; }
+      .mode-option { min-height: 46px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-size: 14px; font-weight: 650; }
+      .mode-option[aria-pressed="true"] { background: var(--green); color: #172012; }
+      .game-tile { width: 100%; min-height: 78px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 13px; background: var(--panel); padding: 0 18px; color: var(--text); text-align: left; }
+      .game-tile strong { font-size: 16px; font-weight: 600; }
+      .game-tile span { color: var(--green); font: 20px var(--mono); }
+      .room-screen { width: min(100% - 32px, 430px); margin: 0 auto; padding: 24px 0 40px; }
+      .room-screen[hidden] { display: none; }
+      .room-screen h1 { margin: 12px 0 24px; font-size: 28px; letter-spacing: -.05em; }
+      .room-actions { display: grid; gap: 12px; }
+      .room-actions .button { width: 100%; min-height: 52px; }
+      .room-join { display: flex; gap: 8px; }
+      .room-join .text-input { flex: 1; }
+      .room-error { min-height: 20px; margin: 14px 0 0; color: var(--danger); font-size: 12px; }
+      #home[hidden], #game[hidden] { display: none; }
+      #game .side-column { display: none; }
+      #game .game-card { border: 0; border-radius: 0; background: transparent; padding-left: 0; padding-right: 0; }
+      .connection[data-state="offline"] { display: none; }
+      #turn-card .step-label { display: none; }
+      #history-card .step-label { display: none; }
+      #secret-card .secret-copy span { display: none; }
+      #secret-card .section-heading h2 { font-size: 14px; }
+      #game .history-item { background: rgba(25, 31, 25, .6); }
+      #game .room-heading h1 { font-size: 24px; }
+      #game .room-heading .eyebrow { display: none; }
+      #home-button { min-width: 76px; }
+      #game[data-mode="1P"] #players-card,
+      #game[data-mode="1P"] #secret-card,
+      #game[data-mode="1P"] #copy-room,
+      #game[data-mode="1P"] .room-code { display: none; }
+      #game[data-mode="2P"] #home-button { margin-left: auto; }
+      @media (max-width: 600px) {
+        .app-home { width: min(100% - 36px, 430px); padding-top: 37px; }
+        .home-title { margin-bottom: 27px; font-size: 29px; }
+        .room-screen { width: min(100% - 36px, 430px); padding-top: 31px; }
+        #game .room-heading { display: flex; align-items: center; }
+        #game .room-tools { display: contents; }
+        #game .room-code, #game #copy-room { display: none; }
+        #game .room-heading h1 { margin: 0; font-size: 23px; }
+        #game #home-button { min-height: 42px; width: auto; flex: 0 0 auto; margin-left: auto; }
+        #game .game-grid { margin-top: 18px; }
+        #game .main-column { display: flex; flex-direction: column; }
+        #game .main-column > * { order: initial; }
+        #game .main-column > #turn-card { order: 0; }
+        #game .main-column > #players-card { order: 1; }
+        #game .main-column > #secret-card { order: 2; }
+        #game .main-column > #history-card { order: 3; }
+        #game .game-card { padding: 15px; }
+      }
+    </style>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js" defer></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+      (() => {
+        const $ = (selector) => document.querySelector(selector);
+        const elements = {
+          connection: $("#connection"),
+          connectionText: $("#connection-text"),
+          setup: $("#home"),
+          lobby: $("#lobby"),
+          modeOne: $("#mode-one"),
+          modeTwo: $("#mode-two"),
+          gameTile: $("#game-tile"),
+          backHome: $("#back-home"),
+          roomError: $("#room-error"),
+          playersCard: $("#players-card"),
+          secretCard: $("#secret-card"),
+          turnCard: $("#turn-card"),
+          gameTitle: $("#game-title"),
+          game: $("#game"),
+          name: $("#player-name"),
+          room: $("#room-code-input"),
+          create: $("#create-room"),
+          join: $("#join-room"),
+          banner: $("#game-banner"),
+          players: $("#players"),
+          secretForm: $("#secret-form"),
+          secret: $("#secret-input"),
+          secretSubmit: $("#secret-submit"),
+          turnTitle: $("#turn-title"),
+          turnHint: $("#turn-hint"),
+          turnNumber: $("#turn-number"),
+          guessForm: $("#guess-form"),
+          guess: $("#guess-input"),
+          guessSubmit: $("#guess-submit"),
+          history: $("#history"),
+          code: $("#room-code"),
+          copy: $("#copy-room"),
+          leave: $("#home-button"),
+          readyStatus: $("#ready-status")
+        };
+        const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
+        let client = null;
+        let room = "";
+        let playerId = "";
+        let playerName = "";
+        let mySecret = "";
+        let players = {};
+        let gameState = null;
+        let guesses = {};
+        let results = {};
+        let handledResults = new Set();
+        let joined = false;
+        let joining = false;
+        let mode = "1P";
+        let soloMode = false;
+        let soloSecret = "";
+
+        const roomTopic = () => `fourfold/1a2b/v1/${room}`;
+        const playerTopic = (id) => `${roomTopic()}/players/${id}/presence`;
+        const secretKey = () => `fourfold.secret.${room}.${playerId}`;
+        const setConnection = (state, text) => {
+          elements.connection.dataset.state = state;
+          elements.connectionText.textContent = text;
+        };
+        const setBanner = (message, kind = "neutral") => {
+          elements.banner.textContent = message;
+          elements.banner.dataset.kind = kind;
+          elements.banner.hidden = !message;
+        };
+        function setMode(nextMode) {
+          mode = nextMode;
+          elements.modeOne.setAttribute("aria-pressed", String(mode === "1P"));
+          elements.modeTwo.setAttribute("aria-pressed", String(mode === "2P"));
+        }
+        function createSecret() {
+          const digits = "0123456789".split("");
+          for (let index = digits.length - 1; index > 0; index--) {
+            const swap = crypto.getRandomValues(new Uint32Array(1))[0] % (index + 1);
+            [digits[index], digits[swap]] = [digits[swap], digits[index]];
+          }
+          return digits.slice(0, 4).join("");
+        }
+        function startSoloGame() {
+          playerName = validName(elements.name.value) || "Player";
+          elements.name.value = playerName;
+          localStorage.setItem("fourfold.name", playerName);
+          soloMode = true;
+          soloSecret = createSecret();
+          room = "";
+          playerId = "solo";
+          players = { solo: { id: "solo", name: playerName, online: true, ready: true } };
+          guesses = {};
+          results = {};
+          handledResults = new Set();
+          gameState = { phase: "playing", turn: 1, activePlayerId: playerId };
+          elements.setup.hidden = true;
+          elements.lobby.hidden = true;
+          elements.game.hidden = false;
+          elements.game.dataset.mode = "1P";
+          elements.gameTitle.textContent = "1A2B";
+          elements.playersCard.hidden = true;
+          elements.secretCard.hidden = true;
+          elements.copy.hidden = true;
+          setBanner("Guess the 4-digit code.");
+          render();
+        }
+        const publish = (topic, value, retain = true) => new Promise((resolve, reject) => {
+          if (!client || !client.connected) {
+            reject(new Error("The MQTT connection is not available."));
+            return;
+          }
+          client.publish(topic, JSON.stringify(value), { qos: 1, retain }, (error) => {
+            if (error) reject(error);
+            else resolve();
+          });
+        });
+
+        function createRoomCode() {
+          const bytes = new Uint8Array(6);
+          crypto.getRandomValues(bytes);
+          return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+        }
+
+        function setRoomInput(value) {
+          elements.room.value = value;
+        }
+
+        function validName(name) {
+          return name.trim().slice(0, 20);
+        }
+
+        function enterRoom(code) {
+          if (joining || joined) return;
+          if (!window.mqtt) {
+            setConnection("error", "Game library unavailable");
+            setBanner("The MQTT library did not load. Check your connection and refresh the page.", "error");
+            return;
+          }
+          room = code.toUpperCase();
+          playerName = validName(elements.name.value) || "Player";
+          playerId = localStorage.getItem(`fourfold.player.${room}`) || crypto.randomUUID().replaceAll("-", "").slice(0, 12);
+          localStorage.setItem(`fourfold.player.${room}`, playerId);
+          mySecret = sessionStorage.getItem(secretKey()) || "";
+          joining = true;
+          elements.create.disabled = true;
+          elements.join.disabled = true;
+          elements.room.value = room;
+          setConnection("connecting", "Connecting to room…");
+          setBanner("Connecting to the game room…");
+
+          client = window.mqtt.connect(brokerUrl, {
+            clientId: `fourfold-${crypto.randomUUID().replaceAll("-", "").slice(0, 18)}`,
+            clean: true,
+            connectTimeout: 12000,
+            reconnectPeriod: 2000,
+            will: {
+              topic: playerTopic(playerId),
+              payload: JSON.stringify({ id: playerId, online: false }),
+              qos: 1,
+              retain: true
+            }
+          });
+          client.on("connect", () => {
+            setConnection("connected", "Connected");
+            client.subscribe(`${roomTopic()}/#`, { qos: 1 }, (error) => {
+              if (error) {
+                elements.roomError.textContent = "Could not join this room.";
+                setBanner("Could not subscribe to the room. Please leave and try again.", "error");
+                return;
+              }
+              if (joined) {
+                const current = players[playerId];
+                if (current) {
+                  publish(playerTopic(playerId), { ...current, online: true })
+                    .catch((publishError) => setBanner(`Could not restore your room status: ${publishError.message}`, "error"));
+                }
+              } else {
+                window.setTimeout(completeJoin, 700);
+              }
+            });
+          });
+          client.on("reconnect", () => setConnection("connecting", "Reconnecting…"));
+          client.on("offline", () => setConnection("connecting", "Reconnecting…"));
+          client.on("close", () => {
+            if (joined) setConnection("connecting", "Connection lost");
+          });
+          client.on("error", (error) => {
+            setConnection("error", "Connection error");
+            elements.roomError.textContent = "Connection failed. Try again.";
+            setBanner(`Could not connect to the public MQTT broker: ${error.message || "unknown error"}`, "error");
+          });
+          client.on("message", onMessage);
+        }
+
+        async function completeJoin() {
+          if (!client || !client.connected || joined) return;
+          const otherPlayers = Object.values(players).filter((player) => player.id !== playerId);
+          if (!players[playerId] && otherPlayers.length >= 2) {
+            elements.roomError.textContent = "Room is full.";
+            joining = false;
+            elements.create.disabled = false;
+            elements.join.disabled = false;
+            client.end(true);
+            client = null;
+            return;
+          }
+          const previous = players[playerId] || {};
+          const presence = {
+            id: playerId,
+            name: playerName,
+            online: true,
+            ready: Boolean(previous.ready),
+            joinedAt: previous.joinedAt || Date.now()
+          };
+          try {
+            await publish(playerTopic(playerId), presence);
+            players[playerId] = presence;
+            joined = true;
+            joining = false;
+            elements.setup.hidden = true;
+            elements.lobby.hidden = true;
+            elements.game.hidden = false;
+            soloMode = false;
+            elements.game.dataset.mode = "2P";
+            elements.gameTitle.textContent = "1A2B";
+            elements.playersCard.hidden = false;
+            elements.secretCard.hidden = false;
+            elements.copy.hidden = false;
+            elements.code.textContent = room;
+            setBanner("Choose a secret four-digit number with no repeated digits, then ready up.");
+            render();
+            maybeStartGame();
+          } catch (error) {
+            elements.roomError.textContent = "Could not join the room. Try again.";
+            joining = false;
+            elements.create.disabled = false;
+            elements.join.disabled = false;
+          }
+        }
+
+        function onMessage(topic, payload) {
+          let data;
+          try {
+            data = JSON.parse(payload.toString());
+          } catch {
+            return;
+          }
+          const base = roomTopic();
+          const relative = topic.slice(base.length + 1);
+          const parts = relative.split("/");
+          if (parts[0] === "players" && parts.length === 3 && parts[2] === "presence" && data.id) {
+            const previous = players[data.id] || {};
+            players[data.id] = { ...previous, ...data };
+            if (!data.online && data.id !== playerId) players[data.id].ready = Boolean(previous.ready);
+            renderPlayers();
+            maybeStartGame();
+            return;
+          }
+          if (parts[0] === "game" && data && typeof data.turn === "number") {
+            if (!gameState || data.turn > gameState.turn ||
+              (data.turn === gameState.turn && gameState.phase !== "won" && data.phase === "won")) {
+              gameState = data;
+              render();
+              processCurrentResult();
+            }
+            return;
+          }
+          if (parts[0] === "moves" && parts.length === 3) {
+            const turn = Number(parts[1]);
+            if (!Number.isInteger(turn) || turn < 1) return;
+            if (parts[2] === "guess" && typeof data.guess === "string" && data.by) {
+              guesses[turn] = data;
+              renderHistory();
+              if (data.to === playerId && gameState?.turn === turn && mySecret) {
+                answerGuess(turn, data);
+              } else if (data.to === playerId && !mySecret) {
+                setBanner("Your secret was lost when this page reloaded. Re-enter it below to continue.", "error");
+              }
+            } else if (parts[2] === "result" && typeof data.a === "number" && typeof data.b === "number") {
+              results[turn] = data;
+              renderHistory();
+              processCurrentResult();
+            }
+          }
+        }
+
+        function getPlayers() {
+          return Object.values(players).filter((player) => player.online !== false)
+            .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0) || a.id.localeCompare(b.id));
+        }
+
+        function maybeStartGame() {
+          if (!joined || gameState || getPlayers().length !== 2) return;
+          const activePlayers = getPlayers();
+          if (!activePlayers.every((player) => player.ready)) return;
+          gameState = { phase: "playing", turn: 1, activePlayerId: activePlayers[0].id, startedAt: Date.now() };
+          setBanner("Both players are ready. The first turn starts now.");
+          publish(`${roomTopic()}/game`, gameState).catch((error) => setBanner(`Could not start the game: ${error.message}`, "error"));
+          render();
+        }
+
+        function renderPlayers() {
+          if (!elements.players) return;
+          const activePlayers = getPlayers();
+          const displayPlayers = [...activePlayers];
+          if (!displayPlayers.some((player) => player.id === playerId) && joined) {
+            displayPlayers.unshift(players[playerId] || { id: playerId, name: playerName, online: true, ready: false });
+          }
+          const slots = [displayPlayers[0], displayPlayers[1]];
+          elements.players.replaceChildren(...slots.map((player, index) => {
+            const card = document.createElement("div");
+            card.className = "player-card";
+            if (gameState?.phase === "playing" && player?.id === gameState.activePlayerId) card.classList.add("is-turn");
+            if (!player) {
+              card.innerHTML = `<span class="player-avatar">··</span><span class="waiting-slot">Waiting for player ${index + 1}…</span>`;
+              return card;
+            }
+            const avatar = document.createElement("span");
+            avatar.className = "player-avatar";
+            avatar.textContent = player.name.slice(0, 2).toUpperCase();
+            const details = document.createElement("span");
+            details.className = "player-details";
+            const name = document.createElement("span");
+            name.className = "player-name";
+            name.textContent = player.id === playerId ? `${player.name} (you)` : player.name;
+            const status = document.createElement("span");
+            status.className = "player-status";
+            status.textContent = player.online === false ? "Disconnected" : player.ready ? "Secret set · Ready" : "Choosing a secret";
+            details.append(name, status);
+            const state = document.createElement("span");
+            state.className = "player-state";
+            state.textContent = player.ready ? "READY" : player.online === false ? "OFFLINE" : "ONLINE";
+            card.append(avatar, details, state);
+            return card;
+          }));
+        }
+
+        function render() {
+          renderPlayers();
+          if (soloMode) {
+            renderSoloGame();
+            return;
+          }
+          const activePlayers = getPlayers();
+          const me = players[playerId];
+          const opponent = activePlayers.find((player) => player.id !== playerId);
+          if (!gameState) {
+            elements.readyStatus.textContent = me?.ready ? "You are ready" : "Not ready yet";
+            elements.secretSubmit.textContent = me?.ready ? "Update secret" : "Lock in secret";
+            elements.secretSubmit.disabled = false;
+            elements.secret.disabled = false;
+            elements.secret.value = mySecret;
+            elements.guessForm.hidden = true;
+            elements.turnTitle.textContent = "Waiting for both players";
+            elements.turnHint.textContent = opponent ? `${opponent.name} needs to set a secret too.` : "Share the room code to invite your opponent.";
+            elements.turnNumber.textContent = "—";
+          } else if (gameState.phase === "won") {
+            elements.secretSubmit.disabled = true;
+            elements.secret.disabled = true;
+            elements.readyStatus.textContent = "ROUND COMPLETE";
+            const winner = players[gameState.winnerId]?.name || "A player";
+            elements.turnTitle.textContent = gameState.winnerId === playerId ? "You cracked the code!" : `${winner} cracked your code`;
+            elements.turnHint.textContent = "A perfect 4A ends the game.";
+            elements.turnNumber.textContent = String(Math.max(1, gameState.turn));
+            elements.guessForm.hidden = true;
+            setBanner(gameState.winnerId === playerId ? "You win — all four digits, in the right order!" : `${winner} wins this round.`, "neutral");
+          } else {
+            elements.secretSubmit.disabled = true;
+            elements.secret.disabled = true;
+            elements.readyStatus.textContent = "GAME IN PROGRESS";
+            const isMyTurn = gameState.activePlayerId === playerId;
+            const whoseTurn = players[gameState.activePlayerId]?.name || "Opponent";
+            elements.turnTitle.textContent = isMyTurn ? "Your turn to guess" : `${whoseTurn} is guessing`;
+            elements.turnHint.textContent = isMyTurn ? `Try to crack ${opponent?.name || "your opponent"}’s secret.` : "Your opponent is trying to crack your secret.";
+            elements.turnNumber.textContent = String(gameState.turn);
+            elements.guessForm.hidden = !isMyTurn;
+            elements.guessSubmit.disabled = !isMyTurn || Boolean(guesses[gameState.turn]) || !mySecret;
+            if (isMyTurn && !mySecret) setBanner("Re-enter your secret number below before taking your turn.", "error");
+            else if (!guesses[gameState.turn] && isMyTurn) setBanner("Your turn. Enter four different digits to make a guess.");
+            else if (!isMyTurn) setBanner("Waiting for your opponent’s guess.");
+            processCurrentResult();
+          }
+          renderHistory();
+        }
+
+        function renderSoloGame() {
+          elements.turnNumber.textContent = String(gameState.turn);
+          elements.guessForm.hidden = gameState.phase === "won";
+          elements.guessSubmit.disabled = false;
+          if (gameState.phase === "won") {
+            elements.turnTitle.textContent = "You got it!";
+            elements.turnHint.textContent = "";
+            setBanner(`The code was ${soloSecret}.`);
+          } else {
+            elements.turnTitle.textContent = "Guess the code";
+            elements.turnHint.textContent = "";
+            setBanner("Enter 4 different digits.");
+          }
+          renderHistory();
+        }
+
+        function renderHistory() {
+          const turns = Object.keys(guesses).map(Number).sort((a, b) => a - b);
+          if (!turns.length) {
+            const empty = document.createElement("div");
+            empty.className = "empty-history";
+            empty.textContent = "Guesses will appear here once the game begins.";
+            elements.history.replaceChildren(empty);
+            return;
+          }
+          elements.history.replaceChildren(...turns.map((turn) => {
+            const guess = guesses[turn];
+            const item = document.createElement("div");
+            item.className = "history-item";
+            const index = document.createElement("span");
+            index.className = "history-index";
+            index.textContent = String(turn).padStart(2, "0");
+            const detail = document.createElement("span");
+            const player = document.createElement("span");
+            player.className = "history-player";
+            const name = document.createElement("strong");
+            name.textContent = soloMode ? playerName : (players[guess.by]?.name || (guess.by === playerId ? playerName : "Opponent"));
+            player.append(name, document.createTextNode(guess.by === playerId ? " · guessed" : " guessed"));
+            const digits = document.createElement("span");
+            digits.className = "history-guess";
+            digits.textContent = guess.guess;
+            detail.append(player, digits);
+            const outcome = document.createElement("span");
+            outcome.className = "history-result";
+            if (results[turn]) {
+              const bulls = document.createElement("span");
+              bulls.textContent = `${results[turn].a}A`;
+              outcome.append(bulls, document.createTextNode(` ${results[turn].b}B`));
+            } else {
+              outcome.textContent = "…";
+            }
+            item.append(index, detail, outcome);
+            return item;
+          }).reverse());
+        }
+
+        function submitSoloGuess(value) {
+          const turn = gameState.turn;
+          const a = [...value].filter((digit, index) => digit === soloSecret[index]).length;
+          const b = [...value].filter((digit) => soloSecret.includes(digit)).length - a;
+          guesses[turn] = { turn, guess: value, by: playerId, at: Date.now() };
+          results[turn] = { a, b };
+          elements.guess.value = "";
+          if (a === 4) gameState = { ...gameState, phase: "won" };
+          else gameState = { ...gameState, turn: turn + 1 };
+          render();
+        }
+
+        async function answerGuess(turn, guess) {
+          if (!mySecret || !client?.connected || results[turn]) return;
+          const a = [...guess.guess].filter((digit, index) => digit === mySecret[index]).length;
+          const b = [...guess.guess].filter((digit) => mySecret.includes(digit)).length - a;
+          try {
+            await publish(`${roomTopic()}/moves/${turn}/result`, { turn, a, b, by: playerId, for: guess.by, at: Date.now() });
+          } catch (error) {
+            setBanner(`Could not share the result: ${error.message}`, "error");
+          }
+        }
+
+        function processCurrentResult() {
+          if (!gameState || gameState.phase !== "playing") return;
+          const result = results[gameState.turn];
+          if (!result || handledResults.has(gameState.turn)) return;
+          handledResults.add(gameState.turn);
+          if (result.a === 4) {
+            gameState = { ...gameState, phase: "won", winnerId: result.for, turn: gameState.turn };
+          } else {
+            gameState = { ...gameState, turn: gameState.turn + 1, activePlayerId: gameState.activePlayerId === playerId
+              ? getPlayers().find((player) => player.id !== playerId)?.id
+              : playerId };
+          }
+          renderPlayers();
+          publish(`${roomTopic()}/game`, gameState).catch((error) => setBanner(`Could not update the game: ${error.message}`, "error"));
+          render();
+        }
+
+        elements.modeOne.addEventListener("click", () => setMode("1P"));
+        elements.modeTwo.addEventListener("click", () => setMode("2P"));
+        elements.gameTile.addEventListener("click", () => {
+          if (mode === "1P") startSoloGame();
+          else {
+            elements.setup.hidden = true;
+            elements.lobby.hidden = false;
+            elements.roomError.textContent = "";
+          }
+        });
+        elements.create.addEventListener("click", () => {
+          if (!window.mqtt) {
+            elements.roomError.textContent = "Could not load online play.";
+            return;
+          }
+          const code = createRoomCode();
+          elements.room.value = code;
+          enterRoom(code);
+        });
+        elements.join.addEventListener("click", () => {
+          const code = elements.room.value.trim().toUpperCase();
+          if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
+            elements.roomError.textContent = "Enter a 6-character room code.";
+            return;
+          }
+          elements.roomError.textContent = "";
+          enterRoom(code);
+        });
+        elements.room.addEventListener("input", () => {
+          elements.room.value = elements.room.value.replace(/[^a-hj-np-z2-9]/gi, "").slice(0, 6).toUpperCase();
+        });
+        elements.secretForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const value = elements.secret.value;
+          if (!/^(?!.*(.).*\1)[0-9]{4}$/.test(value)) {
+            setBanner("Your secret must be four digits with no repeats.", "error");
+            elements.secret.focus();
+            return;
+          }
+          if (!joined || !client?.connected) {
+            setBanner("Reconnect to the room before setting your secret.", "error");
+            return;
+          }
+          mySecret = value;
+          sessionStorage.setItem(secretKey(), value);
+          const current = players[playerId] || { id: playerId, name: playerName, joinedAt: Date.now() };
+          const presence = { ...current, id: playerId, name: playerName, ready: true, online: true };
+          try {
+            await publish(playerTopic(playerId), presence);
+            players[playerId] = presence;
+            setBanner("Your secret is saved on this device only. Waiting for your opponent to ready up.");
+            render();
+            maybeStartGame();
+          } catch (error) {
+            setBanner(`Could not mark you ready: ${error.message}`, "error");
+          }
+        });
+        elements.guessForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const value = elements.guess.value;
+          if (!/^(?!.*(.).*\1)[0-9]{4}$/.test(value)) {
+            setBanner("Use 4 different digits.", "error");
+            elements.guess.focus();
+            return;
+          }
+          if (soloMode) {
+            submitSoloGuess(value);
+            return;
+          }
+          if (!gameState || gameState.phase !== "playing" || gameState.activePlayerId !== playerId || guesses[gameState.turn]) return;
+          const turn = gameState.turn;
+          const guess = { turn, guess: value, by: playerId, to: getPlayers().find((player) => player.id !== playerId)?.id, at: Date.now() };
+          guesses[turn] = guess;
+          elements.guess.value = "";
+          render();
+          try {
+            await publish(`${roomTopic()}/moves/${turn}/guess`, guess);
+          } catch (error) {
+            delete guesses[turn];
+            setBanner(`Could not send your guess: ${error.message}`, "error");
+            render();
+          }
+        });
+        elements.copy.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(room);
+            elements.copy.textContent = "Copied";
+            window.setTimeout(() => { elements.copy.textContent = "Copy invite"; }, 1500);
+          } catch {
+            setBanner(`Share room code ${room} with your opponent.`, "neutral");
+          }
+        });
+        function returnHome() {
+          if (client) {
+            const currentClient = client;
+            if (joined && currentClient.connected) {
+              publish(playerTopic(playerId), { ...players[playerId], online: false })
+                .catch((error) => console.error("Could not clear player presence:", error))
+                .finally(() => currentClient.end(true));
+            } else {
+              currentClient.end(true);
+            }
+          }
+          client = null;
+          room = "";
+          playerId = "";
+          mySecret = "";
+          players = {};
+          guesses = {};
+          results = {};
+          gameState = null;
+          soloMode = false;
+          soloSecret = "";
+          handledResults = new Set();
+          joined = false;
+          joining = false;
+          elements.setup.hidden = false;
+          elements.lobby.hidden = true;
+          elements.game.hidden = true;
+          elements.game.dataset.mode = "";
+          elements.create.disabled = false;
+          elements.join.disabled = false;
+          elements.secret.value = "";
+          elements.guess.value = "";
+          elements.playersCard.hidden = false;
+          elements.secretCard.hidden = false;
+          elements.copy.hidden = false;
+          elements.roomError.textContent = "";
+          elements.room.value = "";
+          setConnection("offline", "Not connected");
+          setBanner("");
+          window.scrollTo(0, 0);
+        }
+        elements.backHome.addEventListener("click", returnHome);
+        elements.leave.addEventListener("click", returnHome);
+
+        if (!window.mqtt) {
+          elements.create.disabled = true;
+          elements.join.disabled = true;
+          console.error("MQTT library unavailable; online multiplayer is disabled.");
+        }
+        elements.name.value = localStorage.getItem("fourfold.name") || "";
+        elements.name.addEventListener("change", () => {
+          const name = validName(elements.name.value);
+          elements.name.value = name;
+          if (name) localStorage.setItem("fourfold.name", name);
+        });
+      })();
+      });
+    </script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div class="brand"><span class="brand-mark">4F</span> fourfold</div>
+        <div class="connection" id="connection" data-state="offline" role="status" aria-live="polite">
+          <span class="connection-dot"></span><span id="connection-text">Not connected</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="app-home" id="home">
+          <h1 class="home-title">Play 1A2B</h1>
+          <div class="home-field">
+            <label class="sr-only" for="player-name">Name</label>
+            <input class="text-input" id="player-name" maxlength="20" placeholder="Your name" autocomplete="nickname">
           </div>
-
-          <button className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 py-3 rounded-xl font-semibold">
-            + 新增裝備
+          <div class="mode-switch" aria-label="Player mode">
+            <button class="mode-option" id="mode-one" type="button" aria-pressed="true">1P</button>
+            <button class="mode-option" id="mode-two" type="button" aria-pressed="false">2P</button>
+          </div>
+          <button class="game-tile" id="game-tile" type="button">
+            <strong>1A2B</strong><span aria-hidden="true">→</span>
           </button>
-        </div>
+        </section>
 
-        {/* 中間 */}
-        <div className="bg-slate-900 rounded-3xl p-5 shadow-xl">
-          <h2 className="text-xl font-bold mb-4">
-            🤖 AI 登山規劃
-          </h2>
+        <section class="room-screen" id="lobby" hidden>
+          <button class="button button-quiet" id="back-home" type="button">← Home</button>
+          <h1>Join a room</h1>
+          <div class="room-actions">
+            <button class="button button-primary" id="create-room" type="button">New room</button>
+            <div class="room-join">
+              <label class="sr-only" for="room-code-input">Room code</label>
+              <input class="text-input room-input" id="room-code-input" maxlength="6" placeholder="Room code" autocomplete="off">
+              <button class="button button-secondary" id="join-room" type="button">Join</button>
+            </div>
+          </div>
+          <p class="room-error" id="room-error" role="status" aria-live="polite"></p>
+        </section>
 
-          <div className="space-y-4">
+        <section class="game" id="game" hidden aria-label="1A2B game">
+          <div class="room-heading">
             <div>
-              <label className="text-gray-400 text-sm">
-                路線
-              </label>
-              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
-                <option>雪山主東峰</option>
-                <option>奇萊南華</option>
-                <option>嘉明湖</option>
-              </select>
+              <h1 id="game-title">1A2B</h1>
             </div>
-
-            <div>
-              <label className="text-gray-400 text-sm">
-                季節
-              </label>
-              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
-                <option>春季</option>
-                <option>夏季</option>
-                <option selected>冬季</option>
-              </select>
+            <div class="room-tools">
+              <div class="room-code"><span>ROOM</span><strong id="room-code">------</strong></div>
+              <button class="button button-secondary" id="copy-room" type="button">Copy invite</button>
+              <button class="button button-quiet" id="home-button" type="button">Home</button>
             </div>
-
-            <div>
-              <label className="text-gray-400 text-sm">
-                天數
-              </label>
-              <select className="w-full bg-slate-800 rounded-xl p-3 mt-1">
-                <option>1天</option>
-                <option selected>2天1夜</option>
-                <option>3天2夜</option>
-              </select>
-            </div>
-
-            <button className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-semibold">
-              AI 生成裝備建議
-            </button>
           </div>
 
-          <div className="mt-8">
-            <h3 className="font-semibold mb-3">
-              AI 建議攜帶
-            </h3>
-
-            <div className="space-y-2">
-              {[
-                "登山背包",
-                "羽絨衣",
-                "頭燈",
-                "雨衣",
-                "睡袋",
-                "登山杖",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="bg-slate-800 rounded-xl p-3 flex items-center gap-2"
-                >
-                  ✅ {item}
+          <div class="game-grid">
+            <div class="main-column">
+              <section class="card game-card" id="players-card">
+                <div class="section-heading">
+                  <h2>The players</h2>
+                  <span class="step-label">TWO SEATS</span>
                 </div>
-              ))}
-            </div>
+                <div class="players" id="players" aria-live="polite"></div>
+              </section>
 
-            <div className="mt-4 p-4 bg-amber-900/30 border border-amber-700 rounded-xl">
-              ⚠️ 12月雪山夜間可能低於 0°C
-              <br />
-              建議攜帶保暖層與備用手套
-            </div>
-          </div>
-        </div>
-
-        {/* 右側 */}
-        <div className="space-y-6">
-
-          <div className="bg-slate-900 rounded-3xl p-5">
-            <h2 className="text-xl font-bold mb-4">
-              🎒 背包分析
-            </h2>
-
-            <div className="text-center">
-              <div className="text-5xl font-bold text-emerald-400">
-                {(totalWeight / 1000).toFixed(1)}
-              </div>
-              <div className="text-gray-400">
-                kg 總重量
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <div className="flex justify-between">
-                <span>裝備總價值</span>
-                <span className="text-green-400">
-                  ${totalPrice.toLocaleString()}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span>AI 評分</span>
-                <span className="font-bold text-blue-400">
-                  82 / 100
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-900 rounded-3xl p-5">
-            <h3 className="font-bold mb-4">
-              📊 AI 分析
-            </h3>
-
-            <div className="space-y-3">
-              <div>
-                <p>保暖能力</p>
-                <div className="text-yellow-400">
-                  ★★★★★
+              <section class="card game-card" id="secret-card">
+                <div class="section-heading">
+                  <h2>Keep your number secret</h2>
+                  <span class="step-label" id="ready-status">NOT READY</span>
                 </div>
-              </div>
+                <form class="secret-panel" id="secret-form">
+                  <div class="secret-copy">
+                    <strong>Your secret</strong>
+                    <span>Choose four unique digits. It stays in this browser and is never sent to MQTT.</span>
+                  </div>
+                  <div class="secret-field">
+                    <label class="sr-only" for="secret-input">Your secret four-digit number</label>
+                    <input class="text-input digits-input" id="secret-input" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="····" autocomplete="off" aria-describedby="secret-help">
+                  </div>
+                  <span class="sr-only" id="secret-help">Enter four digits with no repeated digits.</span>
+                  <button class="button button-primary" id="secret-submit" type="submit">Lock in secret</button>
+                </form>
+              </section>
 
-              <div>
-                <p>安全性</p>
-                <div className="text-yellow-400">
-                  ★★★★☆
+              <section class="card game-card" id="turn-card">
+                <div class="section-heading">
+                  <div class="turn-panel">
+                    <div>
+                      <div class="step-label">THE NEXT MOVE</div>
+                      <h2 id="turn-title">Waiting for both players</h2>
+                    </div>
+                  </div>
+                  <span class="turn-number" id="turn-number">—</span>
                 </div>
-              </div>
+                <div class="game-banner" id="game-banner" data-kind="neutral" role="status" aria-live="polite"></div>
+                <form class="guess-row" id="guess-form" hidden>
+                  <label class="sr-only" for="guess-input">Guess four-digit number</label>
+                  <input class="text-input digits-input" id="guess-input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="Your guess" autocomplete="off">
+                  <button class="button button-primary" id="guess-submit" type="submit">Submit guess</button>
+                </form>
+                <p class="sr-only" id="turn-hint"></p>
+              </section>
 
-              <div>
-                <p>輕量化</p>
-                <div className="text-yellow-400">
-                  ★★☆☆☆
+              <section class="card game-card" id="history-card">
+                <div class="section-heading">
+                  <h2>Guesses</h2>
+                  <span class="step-label">LATEST FIRST</span>
                 </div>
-              </div>
+                <div class="history-list" id="history" aria-live="polite"></div>
+              </section>
             </div>
+
+            <aside class="side-column">
+              <section class="card game-card">
+                <div class="section-heading"><h2>How to play</h2><span class="step-label">01 / 02</span></div>
+                <ul class="rules">
+                  <li><span class="rule-mark">01</span><span>Choose a secret <strong>four-digit number</strong>. Each digit must be different.</span></li>
+                  <li><span class="rule-mark">02</span><span>Take turns guessing your opponent’s number. You’ll get an <strong>A/B clue</strong> after every guess.</span></li>
+                  <li><span class="rule-mark">A</span><span><strong>A</strong> means a correct digit in the correct position.</span></li>
+                  <li><span class="rule-mark">B</span><span><strong>B</strong> means a correct digit in the wrong position.</span></li>
+                </ul>
+              </section>
+              <section class="card game-card">
+                <div class="section-heading"><h2>Private by design</h2><span class="step-label">LOCAL SECRET</span></div>
+                <p class="privacy-copy">Your secret number stays in this browser tab. It’s used to score guesses from your opponent and is <strong>never published</strong> to the broker. Refreshing the page keeps it for this tab.</p>
+              </section>
+            </aside>
           </div>
+        </section>
+      </main>
 
-          <div className="bg-red-900/20 border border-red-700 rounded-3xl p-5">
-            <h3 className="font-bold mb-2">
-              🚨 可減重建議
-            </h3>
-
-            <ul className="space-y-2 text-sm">
-              <li>• 備用衣物 -600g</li>
-              <li>• 露營椅 -900g</li>
-            </ul>
-
-            <div className="mt-4 text-red-300 font-semibold">
-              可減少 1.5kg
-            </div>
-          </div>
-
-        </div>
-      </div>
     </div>
-  );
-}
+  </body>
+</html>
