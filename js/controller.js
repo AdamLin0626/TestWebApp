@@ -1,11 +1,13 @@
 import { GameModel } from "./model.js";
 import { GameView } from "./view.js";
+import { initializeI18n } from "./i18n.js";
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+      const i18n = await initializeI18n();
       (() => {
         const model = new GameModel();
         const state = model.state;
-        const view = new GameView();
+        const view = new GameView(document, i18n.t);
         const elements = view.elements;
         const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
         let client = null;
@@ -17,8 +19,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const roomTopic = () => model.roomTopic();
         const playerTopic = (id) => model.playerTopic(id);
         const secretKey = () => model.secretKey();
-        const setConnection = (connectionState, text) => view.setConnection(connectionState, text);
-        const setBanner = (message, kind = "neutral") => view.setBanner(message, kind);
+        const setConnection = (connectionState, text) => {
+          view.setConnection(connectionState, i18n.t(text));
+        };
+        const setBanner = (message, kind = "neutral") => {
+          view.setBanner(i18n.t(message), kind);
+        };
         function setMode(nextMode) {
           state.mode = nextMode;
           view.setMode(state.mode);
@@ -120,6 +126,33 @@ document.addEventListener("DOMContentLoaded", () => {
           elements.dotsAndBoxesGame.hidden = false;
           render();
         }
+        function startYahtzeeGame() {
+          state.playerName = model.validName(elements.name.value) || "Player";
+          elements.name.value = state.playerName;
+          localStorage.setItem("fourfold.name", state.playerName);
+          state.gameType = "yahtzee";
+          state.room = "";
+          state.playerId = "solo";
+          state.players = { solo: { id: "solo", name: state.playerName, online: true } };
+          state.gameState = model.createYahtzeeGame();
+          state.joined = false;
+          state.soloMode = false;
+          localDotsBoxes = false;
+          localTicTacToe = false;
+          elements.setup.hidden = true;
+          elements.lobby.hidden = true;
+          elements.page.classList.add("is-playing");
+          elements.game.hidden = false;
+          elements.game.dataset.mode = "1P";
+          elements.game.dataset.game = "yahtzee";
+          elements.game.setAttribute("aria-label", "快艇骰子 solo game");
+          elements.roomHeading.hidden = true;
+          elements.gameGrid.hidden = true;
+          elements.ticTacToeGame.hidden = true;
+          elements.dotsAndBoxesGame.hidden = true;
+          elements.yahtzeeGame.hidden = false;
+          render();
+        }
         function startTicTacToeSoloGame() {
           state.playerName = model.validName(elements.name.value) || "Player";
           elements.name.value = state.playerName;
@@ -154,14 +187,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const publish = (topic, value, retain = true) => new Promise((resolve, reject) => {
           if (!client || !client.connected) {
             reject(new Error("The MQTT connection is not available."));
-            return;
-          }
-          if (state.gameType === "dotsandboxes" && parts[0] === "game" &&
-            data && Array.isArray(data.edges) && typeof data.moveCount === "number") {
-            if (!state.gameState || data.moveCount > state.gameState.moveCount) {
-              state.gameState = data;
-              render();
-            }
             return;
           }
           client.publish(topic, JSON.stringify(value), { qos: 1, retain }, (error) => {
@@ -287,7 +312,7 @@ document.addEventListener("DOMContentLoaded", () => {
               : state.gameType === "dotsandboxes" ? "Dots and Boxes game" : "1A2B game");
             elements.gameTitle.textContent = state.gameType === "tictactoe"
               ? "Tic Tac Toe"
-              : state.gameType === "dotsandboxes" ? "Dots and Boxes" : "1A2B";
+              : state.gameType === "dotsandboxes" ? "點格棋" : "1A2B";
             elements.modeBadge.textContent = "2P · Friends";
             elements.playersCard.hidden = isBoardGame;
             elements.secretCard.hidden = state.gameType !== "1a2b";
@@ -339,6 +364,15 @@ document.addEventListener("DOMContentLoaded", () => {
           }
           if (state.gameType === "tictactoe" && parts[0] === "game" &&
             data && Array.isArray(data.board) && typeof data.moveCount === "number") {
+            if (!state.gameState || data.moveCount > state.gameState.moveCount) {
+              state.gameState = data;
+              render();
+            }
+            return;
+          }
+          if (state.gameType === "dotsandboxes" && parts[0] === "game" &&
+            model.isDotsAndBoxesGame(data) &&
+            typeof data.moveCount === "number") {
             if (!state.gameState || data.moveCount > state.gameState.moveCount) {
               state.gameState = data;
               render();
@@ -404,6 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         function renderPlayers() {
           view.renderPlayers(state, getPlayers);
+          i18n.apply();
         }
 
         function render() {
@@ -412,7 +447,9 @@ document.addEventListener("DOMContentLoaded", () => {
             elements.gameGrid.hidden = true;
             elements.ticTacToeGame.hidden = false;
             elements.dotsAndBoxesGame.hidden = true;
+            elements.yahtzeeGame.hidden = true;
             view.renderTicTacToe(state, getPlayers, pendingTicTacToeMove);
+            i18n.apply();
             return;
           }
           if (state.gameType === "dotsandboxes") {
@@ -420,14 +457,49 @@ document.addEventListener("DOMContentLoaded", () => {
             elements.gameGrid.hidden = true;
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = false;
+            elements.yahtzeeGame.hidden = true;
             view.renderDotsAndBoxes(state, getPlayers, pendingDotsMove, localDotsBoxes);
+            i18n.apply();
+            return;
+          }
+          if (state.gameType === "yahtzee") {
+            elements.roomHeading.hidden = true;
+            elements.gameGrid.hidden = true;
+            elements.ticTacToeGame.hidden = true;
+            elements.dotsAndBoxesGame.hidden = true;
+            elements.yahtzeeGame.hidden = false;
+            view.renderYahtzee(state, model);
+            i18n.apply();
             return;
           }
           elements.roomHeading.hidden = false;
           elements.gameGrid.hidden = false;
           elements.ticTacToeGame.hidden = true;
           elements.dotsAndBoxesGame.hidden = true;
+          elements.yahtzeeGame.hidden = true;
           view.render(state, getPlayers, processCurrentResult);
+          i18n.apply();
+        }
+
+        function rollYahtzeeDice() {
+          const nextGame = model.rollYahtzeeDice(state.gameState);
+          if (!nextGame) return;
+          state.gameState = nextGame;
+          render();
+        }
+
+        function toggleYahtzeeDie(dieIndex) {
+          const nextGame = model.toggleYahtzeeDie(state.gameState, dieIndex);
+          if (!nextGame) return;
+          state.gameState = nextGame;
+          render();
+        }
+
+        function scoreYahtzeeCategory(categoryId) {
+          const nextGame = model.scoreYahtzeeTurn(state.gameState, categoryId);
+          if (!nextGame) return;
+          state.gameState = nextGame;
+          render();
         }
 
         async function submitTicTacToeMove(cell) {
@@ -538,6 +610,7 @@ document.addEventListener("DOMContentLoaded", () => {
           elements.lobby.hidden = false;
           elements.roomError.textContent = "";
         });
+        elements.yahtzeeTile.addEventListener("click", startYahtzeeGame);
         elements.create.addEventListener("click", () => {
           if (!window.mqtt) {
             elements.roomError.textContent = "Could not load online play.";
@@ -550,14 +623,14 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.join.addEventListener("click", () => {
           const code = elements.room.value.trim().toUpperCase();
           if (!model.isValidRoomCode(code)) {
-            elements.roomError.textContent = "Enter a 6-character room code.";
+            elements.roomError.textContent = "Enter a 6-digit room code.";
             return;
           }
           elements.roomError.textContent = "";
           enterRoom(code);
         });
         elements.room.addEventListener("input", () => {
-          elements.room.value = elements.room.value.replace(/[^a-hj-np-z2-9]/gi, "").slice(0, 6).toUpperCase();
+          elements.room.value = elements.room.value.replace(/\D/g, "").slice(0, 6);
         });
         elements.secretForm.addEventListener("submit", async (event) => {
           event.preventDefault();
@@ -644,6 +717,21 @@ document.addEventListener("DOMContentLoaded", () => {
           if (!edge || edge.disabled) return;
           submitDotsMove(Number(edge.dataset.edge));
         });
+        elements.yahtzeeDice.addEventListener("click", (event) => {
+          const die = event.target.closest("[data-die]");
+          if (!die || die.disabled) return;
+          toggleYahtzeeDie(Number(die.dataset.die));
+        });
+        elements.yahtzeeRoll.addEventListener("click", rollYahtzeeDice);
+        elements.yahtzeeScoreList.addEventListener("click", (event) => {
+          const category = event.target.closest("[data-category]");
+          if (!category || category.disabled) return;
+          scoreYahtzeeCategory(category.dataset.category);
+        });
+        elements.yahtzeeRestart.addEventListener("click", () => {
+          state.gameState = model.createYahtzeeGame();
+          render();
+        });
         elements.roomWaitingCopy.addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(state.room);
@@ -679,6 +767,7 @@ document.addEventListener("DOMContentLoaded", () => {
           elements.roomWaitingCode.textContent = "------";
           elements.game.hidden = true;
           elements.game.dataset.mode = "";
+          elements.game.dataset.game = "";
           elements.create.disabled = false;
           elements.join.disabled = false;
           elements.secret.value = "";
@@ -697,6 +786,7 @@ document.addEventListener("DOMContentLoaded", () => {
         elements.leave.addEventListener("click", returnHome);
         elements.ticTacToeExit.addEventListener("click", returnHome);
         elements.dotsExit.addEventListener("click", returnHome);
+        elements.yahtzeeExit.addEventListener("click", returnHome);
 
         if (!window.mqtt) {
           elements.create.disabled = true;

@@ -1,0 +1,245 @@
+{
+  "locale": "en",
+  "messages": {
+    "playroom — 1A2B": "playroom — 1A2B",
+    "Not connected": "Not connected",
+    "playroom": "playroom",
+    "Name": "Name",
+    "Your name": "Your name",
+    "Edit": "Edit",
+    "Player mode": "Player mode",
+    "1P · Solo": "1P · Solo",
+    "2P · Friends": "2P · Friends",
+    "Good to see you, {name}.": "Good to see you, {name}.",
+    "Deduce the secret 4-digit code.": "Deduce the secret 4-digit code.",
+    "Tic Tac Toe": "Tic Tac Toe",
+    "Play a friend or a strong computer; oldest marks fade.": "Play a friend or a strong computer; oldest marks fade.",
+    "點格棋": "Dots and Boxes",
+    "6 × 4 board. Play a friend or a strong computer.": "6 × 4 board. Play a friend or a strong computer.",
+    "快艇骰子": "Yahtzee",
+    "Roll, hold, and score with five dice.": "Roll, hold, and score with five dice.",
+    "Memory match": "Memory match",
+    "Find pairs. Flex your memory.": "Find pairs. Flex your memory.",
+    "Soon": "Soon",
+    "Four in a row": "Four in a row",
+    "A classic duel of strategy.": "A classic duel of strategy.",
+    "Play →": "Play →",
+    "Better with a rival.": "Better with a rival.",
+    "Create a private room or join a friend’s game.": "Create a private room or join a friend’s game.",
+    "Start your own room": "Start your own room",
+    "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.": "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.",
+    "Create room →": "Create room →",
+    "OR": "OR",
+    "Have an invite?": "Have an invite?",
+    "Enter your friend's room code.": "Enter your friend's room code.",
+    "Room code": "Room code",
+    "Room": "Room",
+    "e.g. 123456": "e.g. 123456",
+    "Join room": "Join room",
+    "Close": "Close",
+    "Waiting for a player to join your room.": "Waiting for a player to join your room.",
+    "Share this code with your friend to join.": "Share this code with your friend to join.",
+    "Copy room code": "Copy room code",
+    "Exit": "Exit",
+    "Restart": "Restart",
+    "The players": "The players",
+    "TWO SEATS": "TWO SEATS",
+    "Keep your number secret": "Keep your number secret",
+    "NOT READY": "NOT READY",
+    "Your secret": "Your secret",
+    "Choose four unique digits. Your opponent will guess your code, then you’ll take turns guessing each other’s.": "Choose four unique digits. Your opponent will guess your code, then you’ll take turns guessing each other’s.",
+    "Your secret four-digit number": "Your secret four-digit number",
+    "Enter four digits with no repeated digits.": "Enter four digits with no repeated digits.",
+    "Lock in secret": "Lock in secret",
+    "THE NEXT MOVE": "THE NEXT MOVE",
+    "Waiting for both players": "Waiting for both players",
+    "Your guesses": "Your guesses",
+    "LATEST FIRST": "LATEST FIRST",
+    "Guess four-digit number": "Guess four-digit number",
+    "4 digits · no repeats": "4 digits · no repeats",
+    "Clear": "Clear",
+    "Delete": "Delete",
+    "Number keypad": "Number keypad",
+    "Add one more digit to submit": "Add one more digit to submit",
+    "Submit guess": "Submit guess",
+    "How to play": "How to play",
+    "01 / 02": "01 / 02",
+    "Choose a secret four-digit number. Each digit must be different.": "Choose a secret four-digit number. Each digit must be different.",
+    "Take turns guessing your opponent’s number. You’ll get an A/B clue after every guess.": "Take turns guessing your opponent’s number. You’ll get an A/B clue after every guess.",
+    "A means a correct digit in the correct position.": "A means a correct digit in the correct position.",
+    "B means a correct digit in the wrong position.": "B means a correct digit in the wrong position.",
+    "Private by design": "Private by design",
+    "LOCAL SECRET": "LOCAL SECRET",
+    "Your secret number stays in this browser tab. It’s used to score guesses from your opponent and is never published to the broker. Refreshing the page keeps it for this tab.": "Your secret number stays in this browser tab. It’s used to score guesses from your opponent and is never published to the broker. Refreshing the page keeps it for this tab.",
+    "You are ready": "You are ready",
+    "Not ready yet": "Not ready yet",
+    "Update secret": "Update secret",
+    "A player": "A player",
+    "You cracked the code!": "You cracked the code!",
+    "A perfect 4A ends the game.": "A perfect 4A ends the game.",
+    "You win — all four digits, in the right order!": "You win — all four digits, in the right order!",
+    "Your turn to guess": "Your turn to guess",
+    "Your turn. Enter four different digits to make a guess.": "Your turn. Enter four different digits to make a guess.",
+    "Your opponent is trying to crack your secret.": "Your opponent is trying to crack your secret.",
+    "Find the secret. Every clue counts.": "Find the secret. Every clue counts.",
+    "Guess the code": "Guess the code",
+    "You got it!": "You got it!",
+    "Guesses will appear here once the game begins.": "Guesses will appear here once the game begins.",
+    "Computer": "Computer",
+    "Player": "Player",
+    "Opponent": "Opponent",
+    "Waiting for player {number}…": "Waiting for player {number}…",
+    "Square {number}, empty": "Square {number}, empty",
+    "Square {number}, {mark}": "Square {number}, {mark}",
+    "Your turn — you are {mark}.": "Your turn — you are {mark}.",
+    "{name} ({mark}) is choosing.": "{name} ({mark}) is choosing.",
+    "Oldest {mark} removed. {turn}": "Oldest {mark} removed. {turn}",
+    "Waiting for a player to reconnect.": "Waiting for a player to reconnect.",
+    "{name} ({mark}) wins!": "{name} ({mark}) wins!",
+    "LOCAL": "LOCAL",
+    "Your turn — draw a line.": "Your turn — draw a line.",
+    "{name}'s turn.": "{name}'s turn.",
+    "{name} wins {score}–{opponentScore}!": "{name} wins {score}–{opponentScore}!",
+    "It's a tie! {score}–{opponentScore}.": "It's a tie! {score}–{opponentScore}.",
+    "Computer is thinking…": "Computer is thinking…",
+    "Draw {orientation} line {number}": "Draw {orientation} line {number}",
+    "Draw {orientation} line {number}, claimed by {mark}": "Draw {orientation} line {number}, claimed by {mark}",
+    "Ones": "Ones",
+    "Twos": "Twos",
+    "Threes": "Threes",
+    "Fours": "Fours",
+    "Fives": "Fives",
+    "Sixes": "Sixes",
+    "Three of a kind": "Three of a kind",
+    "Four of a kind": "Four of a kind",
+    "Full house": "Full house",
+    "Small straight": "Small straight",
+    "Large straight": "Large straight",
+    "Yahtzee": "Yahtzee",
+    "Chance": "Chance",
+    "TOTAL SCORE": "TOTAL SCORE",
+    "points": "points",
+    "ROUND": "ROUND",
+    "of 13": "of 13",
+    "{round} of 13": "{round} of 13",
+    "ROLL {roll} OF 3": "ROLL {roll} OF 3",
+    "READY TO ROLL": "READY TO ROLL",
+    "Game complete": "Game complete",
+    "Roll dice · 3 left": "Roll dice · 3 left",
+    "Roll again · {count} left": "Roll again · {count} left",
+    "Tap Roll to start your turn.": "Tap Roll to start your turn.",
+    "Tap dice to hold them, then roll again.": "Tap dice to hold them, then roll again.",
+    "Choose a category to score this turn.": "Choose a category to score this turn.",
+    "Die {number}: {value}, held": "Die {number}: {value}, held",
+    "Die {number}: {value}": "Die {number}: {value}",
+    "Die {number}: not rolled": "Die {number}: not rolled",
+    "Five dice": "Five dice",
+    "held": "held",
+    "SCORECARD": "SCORECARD",
+    "Choose one category each turn": "Choose one category each turn",
+    "Upper {score} / 63{bonus}{yahtzee} · {count} categories left": "Upper {score} / 63{bonus}{yahtzee} · {count} categories left",
+    "· +35 bonus": "· +35 bonus",
+    "· Yahtzee +{score}": "· Yahtzee +{score}",
+    "Could not send your move: {error}": "Could not send your move: {error}",
+    "Could not start the game: {error}": "Could not start the game: {error}",
+    "Create a room or join a friend for a moving 3×3 game.": "Create a room or join a friend for a moving 3×3 game.",
+    "Create a room or join a friend to play 點格棋.": "Create a room or join a friend to play Dots and Boxes.",
+    "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed.": "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed.",
+    "Take turns drawing lines. Complete a box to score and keep your turn.": "Take turns drawing lines. Complete a box to score and keep your turn.",
+    "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.": "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.",
+    "TIC TAC TOE / TWO PLAYERS": "TIC TAC TOE / TWO PLAYERS",
+    "DOTS AND BOXES / TWO PLAYERS": "DOTS AND BOXES / TWO PLAYERS",
+    "1A2B / TWO PLAYERS": "1A2B / TWO PLAYERS",
+    "Create game room →": "Create game room →",
+    "Connection failed. Try again.": "Connection failed. Try again.",
+    "Enter a 6-digit room code.": "Enter a 6-digit room code.",
+    "Room is full.": "Room is full.",
+    "Could not load online play.": "Could not load online play.",
+    "Game library unavailable": "Game library unavailable",
+    "Connecting to room…": "Connecting to room…",
+    "Connected": "Connected",
+    "Reconnecting…": "Reconnecting…",
+    "Connection lost": "Connection lost",
+    "Connection error": "Connection error",
+    "Waiting for a friend to join.": "Waiting for a friend to join.",
+    "6 × 4 boxes. Take turns drawing a line; complete a box to score and take another turn.": "6 × 4 boxes. Take turns drawing a line; complete a box to score and take another turn.",
+    "Roll, hold, and make every count.": "Roll, hold, and make every count."
+    ,"The secret code": "The secret code"
+    ,"Secret code": "Secret code"
+    ,"A/B clue": "A/B clue"
+    ,"Make three in a row. When all nine squares are filled, the oldest mark is removed before each new move.": "Make three in a row. When all nine squares are filled, the oldest mark is removed before each new move."
+    ,"Dots and Boxes board, 6 rows by 4 columns": "Dots and Boxes board, 6 rows by 4 columns"
+    ,"3 by 3 game board": "3 by 3 game board"
+    ,"Scores": "Scores"
+    ,"1A2B game": "1A2B game"
+    ,"Tic Tac Toe game": "Tic Tac Toe game"
+    ,"Dots and Boxes game": "Dots and Boxes game"
+    ,"Dots and Boxes against the computer": "Dots and Boxes against the computer"
+    ,"Tic Tac Toe against the computer": "Tic Tac Toe against the computer"
+    ,"Yahtzee game": "Yahtzee game"
+    ,"快艇骰子 solo game": "Yahtzee solo game"
+    ,"Copied": "Copied"
+    ,"Disconnected": "Disconnected"
+    ,"Secret set · Ready": "Secret set · Ready"
+    ,"Choosing a secret": "Choosing a secret"
+    ,"READY": "READY"
+    ,"OFFLINE": "OFFLINE"
+    ,"ONLINE": "ONLINE"
+    ," (you)": " (you)"
+    ," · guessed": " · guessed"
+    ," guessed": " guessed"
+    ,"ROUND COMPLETE": "ROUND COMPLETE"
+    ,"GAME IN PROGRESS": "GAME IN PROGRESS"
+    ,"You cracked your opponent’s code!": "You cracked your opponent’s code!"
+    ,"{name} cracked your code": "{name} cracked your code"
+    ,"{name} wins this round.": "{name} wins this round."
+    ,"Try to crack {name}’s secret.": "Try to crack {name}’s secret."
+    ,"The code was {code}.": "The code was {code}."
+    ,"{name} needs to set a secret too.": "{name} needs to set a secret too."
+    ,"Share the room code to invite your opponent.": "Share the room code to invite your opponent."
+    ,"Re-enter your secret number below before taking your turn.": "Re-enter your secret number below before taking your turn."
+    ,"Waiting for your opponent’s guess.": "Waiting for your opponent’s guess."
+    ,"Your opponent’s guess": "Your opponent’s guess"
+    ,"Your secret was lost when this page reloaded. Re-enter it below to continue.": "Your secret was lost when this page reloaded. Re-enter it below to continue."
+    ,"Your secret must be four digits with no repeats.": "Your secret must be four digits with no repeats."
+    ,"Reconnect to the room before setting your secret.": "Reconnect to the room before setting your secret."
+    ,"Your secret is saved on this device only. Waiting for your opponent to ready up.": "Your secret is saved on this device only. Waiting for your opponent to ready up."
+    ,"Could not mark you ready: {error}": "Could not mark you ready: {error}"
+    ,"Use 4 different digits.": "Use 4 different digits."
+    ,"Could not send your guess: {error}": "Could not send your guess: {error}"
+    ,"Connecting to the game room…": "Connecting to the game room…"
+    ,"Could not join this room.": "Could not join this room."
+    ,"Could not subscribe to the room. Please leave and try again.": "Could not subscribe to the room. Please leave and try again."
+    ,"Could not restore your room status: {error}": "Could not restore your room status: {error}"
+    ,"Could not connect to the public MQTT broker: {error}": "Could not connect to the public MQTT broker: {error}"
+    ,"Could not join the room. Try again.": "Could not join the room. Try again."
+    ,"Set your secret code. Once both players are ready, take turns guessing each other’s code.": "Set your secret code. Once both players are ready, take turns guessing each other’s code."
+    ,"Could not copy the room code: {error}. Share {code} with your friend to join.": "Could not copy the room code: {error}. Share {code} with your friend to join."
+    ,"The MQTT connection is not available.": "The MQTT connection is not available."
+    ,"The MQTT library did not load. Check your connection and refresh the page.": "The MQTT library did not load. Check your connection and refresh the page."
+    ,"Could not start the game.": "Could not start the game."
+    ,"Could not update the game: {error}": "Could not update the game: {error}"
+    ,"You win!": "You win!"
+    ,"Draw a line": "Draw a line"
+    ,"Both players are ready. The first turn starts now.": "Both players are ready. The first turn starts now."
+    ,"Set your secret code.": "Set your secret code."
+    ,"Waiting for your opponent to ready up.": "Waiting for your opponent to ready up."
+    ,"Good to see you,": "Good to see you,"
+    ,"Choose a secret": "Choose a secret"
+    ,"four-digit number": "four-digit number"
+    ,". Each digit must be different.": ". Each digit must be different."
+    ,"Take turns guessing your opponent’s number. You’ll get an": "Take turns guessing your opponent’s number. You’ll get an"
+    ,"after every guess.": "after every guess."
+    ,"means a correct digit in the correct position.": "means a correct digit in the correct position."
+    ,"means a correct digit in the wrong position.": "means a correct digit in the wrong position."
+    ,"The secret number stays in this browser tab. It’s used to score guesses from your opponent and is": "The secret number stays in this browser tab. It’s used to score guesses from your opponent and is"
+    ,"never published": "never published"
+    ,"to the broker. Refreshing the page keeps it for this tab.": "to the broker. Refreshing the page keeps it for this tab."
+    ,"{name} (you)": "{name} (you)"
+    ,"{count} held": "{count} held"
+    ,"Game complete — you scored {score} points.": "Game complete — you scored {score} points."
+    ,"horizontal": "horizontal"
+    ,"vertical": "vertical"
+    ,"GUESS {number}": "GUESS {number}"
+  }
+}

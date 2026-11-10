@@ -1,7 +1,8 @@
 export class GameView {
-  constructor(documentRef = document) {
+  constructor(documentRef = document, translate = (source) => source) {
     const $ = (selector) => documentRef.querySelector(selector);
     this.document = documentRef;
+    this.translate = translate;
     this.elements = {
       page: $(".page"),
       connection: $("#connection"),
@@ -18,6 +19,7 @@ export class GameView {
       gameTile: $("#game-tile"),
       ticTacToeTile: $("#tic-tac-toe-tile"),
       dotsAndBoxesTile: $("#dots-and-boxes-tile"),
+      yahtzeeTile: $("#yahtzee-tile"),
       backHome: $("#back-home"),
       roomError: $("#room-error"),
       roomKicker: $("#room-kicker"),
@@ -68,7 +70,19 @@ export class GameView {
       dotsPlayers: $("#dots-players"),
       dotsStatus: $("#dots-status"),
       dotsScores: $("#dots-scores"),
-      dotsBoard: $("#dots-board")
+      dotsBoard: $("#dots-board"),
+      yahtzeeGame: $("#yahtzee-game"),
+      yahtzeeExit: $("#yahtzee-exit"),
+      yahtzeeRestart: $("#yahtzee-restart"),
+      yahtzeeDice: $("#yahtzee-dice"),
+      yahtzeeRoll: $("#yahtzee-roll"),
+      yahtzeeRollLabel: $("#yahtzee-roll-label"),
+      yahtzeeHint: $("#yahtzee-hint"),
+      yahtzeeHeldCount: $("#yahtzee-held-count"),
+      yahtzeeTotal: $("#yahtzee-total"),
+      yahtzeeRound: $("#yahtzee-round"),
+      yahtzeeScoreList: $("#yahtzee-score-list"),
+      yahtzeeScorecardFooter: $("#yahtzee-scorecard-footer")
     };
   }
 
@@ -96,7 +110,7 @@ export class GameView {
     this.elements.roomDescription.textContent = isTicTacToe
       ? "Create a room or join a friend for a moving 3×3 game."
       : isDotsAndBoxes
-        ? "Create a room or join a friend to play Dots and Boxes."
+        ? "Create a room or join a friend to play 點格棋."
         : "Create a private room or join a friend’s game.";
     this.elements.roomCreateDescription.textContent = isTicTacToe
       ? "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed."
@@ -175,7 +189,7 @@ export class GameView {
       }
     } else if (activePlayers.length !== 2 && !localMode) {
       this.elements.dotsStatus.textContent = "Waiting for a player to reconnect.";
-    } else if (pendingMove && localMode) {
+    } else if (pendingMove && localMode && game.activePlayerId !== state.playerId) {
       this.elements.dotsStatus.textContent = "Computer is thinking…";
     } else {
       this.elements.dotsStatus.textContent = game.activePlayerId === state.playerId
@@ -237,6 +251,90 @@ export class GameView {
     button.disabled = !game || game.phase !== "playing" || game.activePlayerId !== state.playerId ||
       players.length !== 2 && !localMode || pendingMove || Boolean(move);
     return button;
+  }
+
+  renderYahtzee(state, model) {
+    const game = state.gameState;
+    const categories = model.getYahtzeeCategories();
+    const hasRolled = game.dice.some(Boolean);
+    const heldCount = game.held.filter(Boolean).length;
+    this.elements.yahtzeeTotal.textContent = String(game.totalScore || 0);
+    this.elements.yahtzeeRound.textContent = `${String(Math.min(game.round, 13)).padStart(2, "0")} of 13`;
+    this.elements.yahtzeeRollLabel.textContent = hasRolled
+      ? `ROLL ${3 - game.rollsRemaining} OF 3`
+      : "READY TO ROLL";
+    this.elements.yahtzeeRoll.textContent = game.phase === "won"
+      ? "Game complete"
+      : game.rollsRemaining === 3 ? "Roll dice · 3 left" : `Roll again · ${game.rollsRemaining} left`;
+    this.elements.yahtzeeRoll.disabled = game.phase !== "playing" || game.rollsRemaining === 0;
+    this.elements.yahtzeeHeldCount.textContent = `${heldCount} held`;
+    this.elements.yahtzeeHint.textContent = game.phase === "won"
+      ? `Game complete — you scored ${game.totalScore} points.`
+      : !hasRolled
+        ? "Tap Roll to start your turn."
+        : game.rollsRemaining > 0
+          ? "Tap dice to hold them, then roll again."
+          : "Choose a category to score this turn.";
+
+    const pipSlots = {
+      1: [5],
+      2: [1, 9],
+      3: [1, 5, 9],
+      4: [1, 3, 7, 9],
+      5: [1, 3, 5, 7, 9],
+      6: [1, 3, 4, 6, 7, 9]
+    };
+    this.elements.yahtzeeDice.replaceChildren(...game.dice.map((die, index) => {
+      const button = this.document.createElement("button");
+      button.type = "button";
+      button.className = "yahtzee-die";
+      button.dataset.die = String(index);
+      button.classList.toggle("is-empty", !die);
+      button.classList.toggle("is-held", game.held[index]);
+      button.setAttribute("aria-label", die
+        ? `Die ${index + 1}: ${die}${game.held[index] ? ", held" : ""}`
+        : `Die ${index + 1}: not rolled`);
+      button.setAttribute("aria-pressed", String(game.held[index]));
+      button.disabled = !die || game.rollsRemaining === 0 || game.phase !== "playing";
+      for (let slot = 1; slot <= 9; slot++) {
+        const pip = this.document.createElement("span");
+        pip.className = "die-pip";
+        if (pipSlots[die]?.includes(slot)) pip.classList.add("is-visible");
+        button.append(pip);
+      }
+      return button;
+    }));
+
+    this.elements.yahtzeeScoreList.replaceChildren(...categories.map((category) => {
+      const score = game.categories[category.id];
+      const button = this.document.createElement("button");
+      button.type = "button";
+      button.className = "yahtzee-score-row";
+      button.dataset.category = category.id;
+      button.classList.toggle("is-scored", score !== null);
+      const preview = score === null ? model.getYahtzeeTurnScore(game, category.id) : score;
+      button.disabled = game.phase !== "playing" || preview === null || score !== null;
+      const label = this.document.createElement("span");
+      label.textContent = this.translate(category.label);
+      const value = this.document.createElement("strong");
+      value.textContent = score !== null
+        ? String(score)
+        : hasRolled && preview !== null ? String(preview) : "—";
+      button.append(label, value);
+      return button;
+    }));
+    const categoriesLeft = 13 - Object.values(game.categories).filter((value) => value !== null).length;
+    this.elements.yahtzeeScorecardFooter.textContent = this.translate(
+      "Upper {score} / 63{bonus}{yahtzee} · {count} categories left",
+      {
+        score: game.upperScore || 0,
+        bonus: game.upperBonus ? this.translate("· +35 bonus") : "",
+        yahtzee: game.yahtzeeBonus
+          ? this.translate("· Yahtzee +{score}", { score: game.yahtzeeBonus })
+          : "",
+        count: categoriesLeft
+      }
+    );
   }
 
   renderPlayers(state, getPlayers) {
@@ -358,7 +456,9 @@ export class GameView {
   }
 
   renderHistory(state) {
-    const turns = Object.keys(state.guesses).map(Number).sort((a, b) => a - b);
+    const turns = Object.keys(state.guesses).map(Number)
+      .filter((turn) => state.guesses[turn].by === state.playerId)
+      .sort((a, b) => a - b);
     if (!turns.length) {
       const empty = this.document.createElement("div");
       empty.className = "empty-history";

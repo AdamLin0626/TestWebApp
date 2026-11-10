@@ -1,6 +1,20 @@
-const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const DOTS_COLUMNS = 4;
 const DOTS_ROWS = 6;
+const YAHTZEE_CATEGORIES = [
+  { id: "ones", label: "Ones", section: "upper" },
+  { id: "twos", label: "Twos", section: "upper" },
+  { id: "threes", label: "Threes", section: "upper" },
+  { id: "fours", label: "Fours", section: "upper" },
+  { id: "fives", label: "Fives", section: "upper" },
+  { id: "sixes", label: "Sixes", section: "upper" },
+  { id: "threeKind", label: "Three of a kind", section: "lower" },
+  { id: "fourKind", label: "Four of a kind", section: "lower" },
+  { id: "fullHouse", label: "Full house", section: "lower" },
+  { id: "smallStraight", label: "Small straight", section: "lower" },
+  { id: "largeStraight", label: "Large straight", section: "lower" },
+  { id: "yahtzee", label: "Yahtzee", section: "lower" },
+  { id: "chance", label: "Chance", section: "lower" }
+];
 
 export class GameModel {
   constructor() {
@@ -32,7 +46,7 @@ export class GameModel {
   }
 
   isValidRoomCode(value) {
-    return /^[A-HJ-NP-Z2-9]{6}$/.test(value);
+    return /^\d{6}$/.test(value);
   }
 
   scoreGuess(secret, guess) {
@@ -51,9 +65,8 @@ export class GameModel {
   }
 
   createRoomCode() {
-    const bytes = new Uint8Array(6);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+    const value = crypto.getRandomValues(new Uint32Array(1))[0] % 1000000;
+    return String(value).padStart(6, "0");
   }
 
   getPlayers() {
@@ -63,7 +76,8 @@ export class GameModel {
   }
 
   roomTopic() {
-    return `fourfold/${this.state.gameType}/v1/${this.state.room}`;
+    const version = this.state.gameType === "dotsandboxes" ? "v2" : "v1";
+    return `fourfold/${this.state.gameType}/${version}/${this.state.room}`;
   }
 
   playerTopic(id) {
@@ -259,6 +273,12 @@ export class GameModel {
     ];
   }
 
+  isDotsAndBoxesGame(game) {
+    return Boolean(game && game.columns === DOTS_COLUMNS && game.rows === DOTS_ROWS &&
+      Array.isArray(game.edges) && game.edges.length === 58 &&
+      Array.isArray(game.boxes) && game.boxes.length === 24);
+  }
+
   applyDotsAndBoxesMove(game, playerId, edgeIndex) {
     if (!game || game.phase !== "playing" || game.activePlayerId !== playerId ||
       !Number.isInteger(edgeIndex) || edgeIndex < 0 || edgeIndex >= game.edges.length || game.edges[edgeIndex]) return null;
@@ -406,5 +426,138 @@ export class GameModel {
       if (nodes >= nodeLimit) break;
     }
     return bestEdge;
+  }
+
+  createYahtzeeGame() {
+    return {
+      phase: "playing",
+      round: 1,
+      dice: Array(5).fill(0),
+      held: Array(5).fill(false),
+      rollsRemaining: 3,
+      categories: Object.fromEntries(YAHTZEE_CATEGORIES.map(({ id }) => [id, null])),
+      yahtzeeBonus: 0,
+      startedAt: Date.now()
+    };
+  }
+
+  getYahtzeeCategories() {
+    return YAHTZEE_CATEGORIES;
+  }
+
+  rollYahtzeeDice(game) {
+    if (!game || game.phase !== "playing" || game.rollsRemaining <= 0) return null;
+    const dice = game.dice.map((die, index) => game.held[index]
+      ? die
+      : crypto.getRandomValues(new Uint32Array(1))[0] % 6 + 1);
+    return {
+      ...game,
+      dice,
+      rollsRemaining: game.rollsRemaining - 1,
+      updatedAt: Date.now()
+    };
+  }
+
+  toggleYahtzeeDie(game, dieIndex) {
+    if (!game || game.phase !== "playing" || game.rollsRemaining <= 0 ||
+      !Number.isInteger(dieIndex) || dieIndex < 0 || dieIndex >= game.dice.length ||
+      !game.dice[dieIndex]) return null;
+    const held = [...game.held];
+    held[dieIndex] = !held[dieIndex];
+    return { ...game, held, updatedAt: Date.now() };
+  }
+
+  scoreYahtzeeCategory(dice, categoryId) {
+    if (!Array.isArray(dice) || dice.length !== 5 || dice.some((die) => !Number.isInteger(die) || die < 1 || die > 6)) {
+      return null;
+    }
+    const counts = Array(7).fill(0);
+    for (const die of dice) counts[die]++;
+    const total = dice.reduce((sum, die) => sum + die, 0);
+    const unique = [...new Set(dice)].sort((a, b) => a - b);
+    switch (categoryId) {
+      case "ones":
+      case "twos":
+      case "threes":
+      case "fours":
+      case "fives":
+      case "sixes": {
+        const face = YAHTZEE_CATEGORIES.findIndex(({ id }) => id === categoryId) + 1;
+        return counts[face] * face;
+      }
+      case "threeKind":
+        return counts.some((count) => count >= 3) ? total : 0;
+      case "fourKind":
+        return counts.some((count) => count >= 4) ? total : 0;
+      case "fullHouse":
+        return counts.includes(3) && counts.includes(2) ? 25 : 0;
+      case "smallStraight":
+        return ["1,2,3,4", "2,3,4,5", "3,4,5,6"]
+          .some((sequence) => sequence.split(",").every((face) => unique.includes(Number(face)))) ? 30 : 0;
+      case "largeStraight":
+        return unique.length === 5 && (unique[0] === 1 && unique[4] === 5 || unique[0] === 2 && unique[4] === 6)
+          ? 40
+          : 0;
+      case "yahtzee":
+        return counts.some((count) => count === 5) ? 50 : 0;
+      case "chance":
+        return total;
+      default:
+        return null;
+    }
+  }
+
+  getYahtzeeTurnScore(game, categoryId) {
+    if (!game || game.phase !== "playing" || game.dice.some((die) => !die) ||
+      !Object.hasOwn(game.categories, categoryId) || game.categories[categoryId] !== null) return null;
+
+    const category = YAHTZEE_CATEGORIES.find(({ id }) => id === categoryId);
+    const isYahtzee = game.dice.every((die) => die === game.dice[0]);
+    const hasJoker = isYahtzee && game.categories.yahtzee === 50;
+    if (!hasJoker) return this.scoreYahtzeeCategory(game.dice, categoryId);
+
+    const forcedUpperCategory = ["ones", "twos", "threes", "fours", "fives", "sixes"][game.dice[0] - 1];
+    if (game.categories[forcedUpperCategory] === null) {
+      return categoryId === forcedUpperCategory ? game.dice[0] * 5 : null;
+    }
+
+    const hasOpenLowerCategory = YAHTZEE_CATEGORIES.some(({ id, section }) =>
+      section === "lower" && game.categories[id] === null
+    );
+    if (category.section === "upper") return hasOpenLowerCategory ? null : 0;
+    if (categoryId === "fullHouse") return 25;
+    if (categoryId === "smallStraight") return 30;
+    if (categoryId === "largeStraight") return 40;
+    return this.scoreYahtzeeCategory(game.dice, categoryId);
+  }
+
+  scoreYahtzeeTurn(game, categoryId) {
+    const score = this.getYahtzeeTurnScore(game, categoryId);
+    if (score === null) return null;
+    const isBonusYahtzee = game.dice.every((die) => die === game.dice[0]) && game.categories.yahtzee === 50;
+    const categories = { ...game.categories, [categoryId]: score };
+    const round = Object.values(categories).filter((value) => value !== null).length + 1;
+    const complete = round > YAHTZEE_CATEGORIES.length;
+    const upperScore = YAHTZEE_CATEGORIES
+      .filter(({ section }) => section === "upper")
+      .reduce((sum, { id }) => sum + (categories[id] || 0), 0);
+    const upperBonus = upperScore >= 63 ? 35 : 0;
+    const yahtzeeBonus = (game.yahtzeeBonus || 0) + (isBonusYahtzee ? 100 : 0);
+    const totalScore = Object.values(categories).reduce((sum, value) => sum + (value || 0), 0) +
+      upperBonus + yahtzeeBonus;
+    return {
+      ...game,
+      phase: complete ? "won" : "playing",
+      round,
+      dice: Array(5).fill(0),
+      held: Array(5).fill(false),
+      rollsRemaining: 3,
+      categories,
+      upperScore,
+      upperBonus,
+      yahtzeeBonus,
+      totalScore,
+      updatedAt: Date.now()
+    };
   }
 }
