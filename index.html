@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#101510">
-    <title>Fourfold — 1A2B</title>
+    <meta name="theme-color" content="#f5f2ea">
+    <title>playroom — 1A2B</title>
     <style>
       :root {
         color-scheme: dark;
@@ -348,7 +348,7 @@
       @media (max-width: 600px) {
         .app-home { width: min(100% - 36px, 430px); padding-top: 37px; }
         .home-title { margin-bottom: 27px; font-size: 29px; }
-        .room-screen { width: min(100% - 36px, 430px); padding-top: 31px; }
+        .room-screen { width: min(100%, 430px); padding: 0; }
         #game .room-heading { display: flex; align-items: center; }
         #game .room-tools { display: contents; }
         #game .room-code, #game #copy-room { display: none; }
@@ -363,6 +363,460 @@
         #game .main-column > #history-card { order: 3; }
         #game .game-card { padding: 15px; }
       }
+
+      :root {
+        color-scheme: light;
+        --bg: #f5f2ea;
+        --panel: #fff;
+        --panel-raised: #e9e5dd;
+        --line: #e8e3da;
+        --text: #2b2730;
+        --muted: #827c87;
+        --green: #29242e;
+        --green-dark: #f0eee7;
+        --orange: #e48755;
+        --danger: #bd4d3e;
+        background: #e9e7e1;
+        color: var(--text);
+      }
+      body {
+        background: #e9e7e1;
+      }
+      .page {
+        width: min(100%, 430px);
+        min-height: 100vh;
+        background: var(--bg);
+        box-shadow: 0 0 48px rgba(37, 32, 29, .08);
+      }
+      .page > .topbar { display: none; }
+      .topbar {
+        min-height: 58px;
+        padding: 0 18px;
+        border: 0;
+        background: var(--bg);
+      }
+      .brand { gap: 0; font-size: 15px; }
+      .brand-mark { display: none; }
+      .connection { font-size: 10px; }
+      .app-home, .room-screen, .game {
+        width: auto;
+        margin: 0;
+        padding: 12px 14px 32px;
+      }
+      .app-home { padding-top: 24px; }
+      .home-title { display: block; margin-bottom: 14px; font-size: 19px; letter-spacing: -.04em; }
+      .home-field { margin-bottom: 9px; }
+      .name-edit {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 58px;
+        border-radius: 12px;
+        background: var(--panel);
+        padding: 8px 14px;
+      }
+      .name-edit > label { display: grid; gap: 2px; }
+      .name-caption { color: var(--muted); font: 8px var(--mono); text-transform: uppercase; }
+      .name-edit input {
+        width: 210px;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 650;
+      }
+      .name-edit button {
+        border: 0;
+        background: transparent;
+        color: #6437e8;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .mode-switch {
+        min-height: 38px;
+        gap: 0;
+        margin: 8px 0 17px;
+        border: 0;
+        border-radius: 22px;
+        background: #e8e4dc;
+        padding: 3px;
+      }
+      .mode-option {
+        min-height: 32px;
+        border-radius: 18px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .mode-option[aria-pressed="true"] { background: var(--green); color: #fff; }
+      .home-greeting { margin: 0 0 12px; font-size: 16px; font-weight: 700; letter-spacing: -.04em; }
+      .game-list { display: grid; gap: 7px; }
+      .game-tile {
+        min-height: 52px;
+        border: 0;
+        border-radius: 11px;
+        background: var(--panel);
+        padding: 9px 12px;
+      }
+      .game-tile > .tile-action { display: block; }
+      .game-tile .tile-copy { display: grid; gap: 4px; color: var(--text); font: inherit; }
+      .game-tile .tile-copy strong { font-size: 12px; }
+      .game-tile .tile-copy small { color: var(--muted); font: 9px ui-sans-serif, system-ui, sans-serif; }
+      .game-tile .tile-action { color: #6034e9; font: 650 9px ui-sans-serif, system-ui, sans-serif; }
+      .game-tile:disabled { cursor: default; }
+      .tile-copy { display: grid; gap: 4px; }
+      .game-tile strong { font-size: 12px; }
+      .game-tile small { color: var(--muted); font-size: 9px; }
+      .tile-action { color: #6034e9; font-size: 9px; font-weight: 650; }
+      .game-tile.is-soon { min-height: 52px; }
+      .game-tile.is-soon .tile-action { color: var(--text); font-weight: 500; }
+      .room-screen {
+        position: fixed;
+        z-index: 5;
+        inset: 0;
+        display: flex;
+        width: min(100%, 430px);
+        align-items: flex-end;
+        overflow: hidden;
+        background: rgba(37, 34, 39, .42);
+        padding: 0;
+      }
+      .room-screen[hidden] { display: none; }
+      .room-sheet {
+        position: relative;
+        width: 100%;
+        max-height: 82svh;
+        min-height: 75svh;
+        overflow: auto;
+        border-radius: 18px 18px 0 0;
+        background: var(--bg);
+        padding: 10px 14px max(34px, env(safe-area-inset-bottom));
+      }
+      .room-sheet::before {
+        display: block;
+        width: 28px;
+        height: 3px;
+        margin: 0 auto 8px;
+        border-radius: 3px;
+        background: #d3cec5;
+        content: "";
+      }
+      .room-kicker { margin-top: 16px; color: #7047f4; font: 8px var(--mono); }
+      #back-home {
+        min-height: 36px;
+        border: 0;
+        border-radius: 12px;
+        background: #e9e5dd;
+        padding: 0 14px;
+        color: var(--text);
+        font-size: 10px;
+      }
+      .room-sheet-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .room-kicker {
+        margin: 0;
+        color: #7047f4;
+        font: 8px var(--mono);
+      }
+      .room-screen h1 { margin: 8px 0 6px; font-size: 20px; }
+      .room-description { margin-bottom: 17px; color: var(--muted); font-size: 11px; }
+      .room-actions { gap: 10px; }
+      .room-create-card {
+        border-radius: 13px;
+        background: #ffd5bc;
+        padding: 13px;
+      }
+      .room-create-card h2 { margin: 0 0 5px; font-size: 14px; }
+      .room-create-card p { margin: 0 0 10px; color: #8d6856; font-size: 10px; line-height: 1.4; }
+      .room-actions .button { min-height: 43px; }
+      .button-primary { background: var(--orange); color: #fff; }
+      .button-primary:hover:not(:disabled) { background: #d97743; }
+      .room-create-card .button { width: 100%; }
+      .room-divider { display: flex; align-items: center; gap: 10px; margin: 3px 0; color: var(--muted); font: 8px var(--mono); }
+      .room-divider::before, .room-divider::after { height: 1px; flex: 1; background: var(--line); content: ""; }
+      .room-invite-title { margin: 0 0 4px; font-size: 14px; }
+      .room-invite-copy { margin: 0; color: var(--muted); font-size: 10px; }
+      .room-join { display: grid; gap: 8px; }
+      .room-join .text-input {
+        min-height: 43px;
+        border-color: var(--line);
+        background: #fff;
+        font-size: 12px;
+      }
+      .room-join .button { width: 100%; }
+      .room-join .button-secondary { border: 0; background: var(--green); color: #fff; }
+      .room-error { margin: 4px 0 0; font-size: 10px; }
+      .room-waiting { display: grid; gap: 12px; }
+      .room-waiting[hidden] { display: none; }
+      .room-waiting-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border-radius: 12px;
+        background: #fff;
+        padding: 14px;
+      }
+      .room-waiting-dot {
+        width: 9px;
+        height: 9px;
+        flex: 0 0 auto;
+        border-radius: 50%;
+        background: var(--orange);
+        box-shadow: 0 0 0 4px #fbe4d6;
+        animation: waiting-pulse 1.5s ease-in-out infinite;
+      }
+      .room-waiting-copy { display: grid; gap: 4px; }
+      .room-waiting-copy strong { font-size: 12px; }
+      .room-waiting-copy span { color: var(--muted); font-size: 10px; }
+      .room-waiting-code {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        padding: 9px 11px;
+      }
+      .room-waiting-code span { color: var(--muted); font: 8px var(--mono); }
+      .room-waiting-code strong { color: var(--text); font: 13px var(--mono); letter-spacing: .12em; }
+      #waiting-copy { min-height: 34px; font-size: 9px; }
+      @keyframes waiting-pulse {
+        50% { box-shadow: 0 0 0 7px rgba(251, 228, 214, .4); }
+      }
+      .game { padding-top: 16px; }
+      #game .room-heading {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        row-gap: 11px;
+        margin-bottom: 0;
+      }
+      #game .room-heading h1 { grid-column: 1; grid-row: 2; margin: 0; font-size: 23px; letter-spacing: -.04em; }
+      #game .room-tools {
+        display: flex;
+        grid-column: 1 / -1;
+        grid-row: 1;
+        display: flex;
+        width: 100%;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 0;
+      }
+      .room-tools .button {
+        flex: 0 0 auto;
+        min-height: 34px;
+        border: 0;
+        border-radius: 12px;
+        background: #e9e5dd;
+        padding: 0 12px;
+        color: var(--text);
+        font-size: 9px;
+      }
+      #game #home-button { min-width: 44px; }
+      #game #home-button, #game #pause-game { min-height: 34px; }
+      #game #mode-badge { grid-column: 2; grid-row: 2; align-self: center; justify-self: end; }
+      #game[data-mode="2P"] .room-tools .button { min-height: 34px; }
+      #game[data-mode="2P"] .room-code { min-height: 34px; }
+      #game #pause-game { display: none; }
+      #game[data-mode="1P"] #pause-game { display: inline-flex; background: var(--green); color: #fff; }
+      .room-brand { font-size: 12px; font-weight: 700; }
+      .mode-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 12px;
+        background: #ffd5bc;
+        padding: 5px 10px;
+        color: #b65f33;
+        font-size: 9px;
+      }
+      .page.is-playing > .topbar { display: none; }
+      #game .game-grid { margin-top: 0; }
+      #game .main-column { display: flex; flex-direction: column; gap: 0; }
+      #game .main-column > * { order: initial; }
+      #game .game-card { padding: 0 0 10px; }
+      #game .section-heading { margin: 0 0 7px; }
+      #game #turn-card { padding-bottom: 4px; }
+      #game .turn-panel h2 { margin: 0; font-size: 22px; letter-spacing: -.04em; }
+      #game #turn-card .section-heading { margin: 0 0 4px; }
+      #game .turn-number { display: none; }
+      #game .game-banner {
+        margin: 0 0 9px;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      #game .game-banner[hidden] { display: none; }
+      #game .game-banner[data-kind="error"] { color: var(--danger); }
+      #game[data-mode="1P"] #turn-title { display: none; }
+      #game[data-mode="1P"] #turn-card .section-heading { display: none; }
+      #secret-card .secret-copy strong { margin: 0; font-size: 9px; text-transform: uppercase; }
+      #secret-card .secret-copy span { display: none; }
+      #secret-card .section-heading { display: none; }
+      #secret-card .secret-panel {
+        min-height: 67px;
+        border: 0;
+        border-radius: 12px;
+        background: #29242e;
+        padding: 10px;
+      }
+      #secret-card .secret-copy { color: #fff; }
+      #secret-card .secret-field { width: 120px; flex: 0 0 120px; }
+      #secret-card .digits-input {
+        min-height: 34px;
+        border: 0;
+        background: transparent;
+        color: #fff;
+        padding: 0;
+        text-align: center;
+      }
+      #secret-card .button { min-height: 34px; font-size: 9px; }
+      #game #history-card { padding-top: 2px; }
+      #game #players-card { display: none; }
+      #game #history-card .section-heading h2 { font-size: 9px; text-transform: uppercase; }
+      #game .history-list { display: grid; gap: 5px; }
+      #game .history-item {
+        min-height: 34px;
+        grid-template-columns: 24px minmax(0, 1fr) auto;
+        gap: 6px;
+        border-radius: 9px;
+        background: #fff;
+        padding: 5px 8px;
+      }
+      #game .history-index { color: var(--muted); font-size: 8px; }
+      #game .history-player { display: none; }
+      #game .history-guess { font-size: 13px; font-weight: 700; letter-spacing: .17em; }
+      #game .history-result { display: flex; gap: 4px; font-size: 9px; }
+      #game .history-result span:first-child { border-radius: 10px; background: #dcec9f; padding: 3px 7px; }
+      #game .history-result span:last-child { border-radius: 10px; background: #ffd7c2; padding: 3px 7px; }
+      #game .empty-history { padding: 12px 8px; font-size: 9px; }
+      #game .empty-history { display: none; }
+      #history-card:has(.empty-history) .guess-row { margin-top: 8px; }
+      .solo-secret-panel {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 77px;
+        margin: 0 0 10px;
+        border-radius: 12px;
+        background: #29242e;
+        padding: 10px 12px;
+        color: #fff;
+      }
+      .solo-secret-panel[hidden] { display: none; }
+      .solo-secret-panel strong { font-size: 8px; text-transform: uppercase; }
+      .solo-secret-panel div { display: flex; gap: 5px; }
+      .solo-secret-panel i {
+        width: 23px;
+        height: 23px;
+        border-radius: 6px;
+        background: #4a4550;
+      }
+      #game[data-mode="2P"] .room-code,
+      #game[data-mode="2P"] #copy-room { display: inline-flex; }
+      #game .guess-row {
+        display: block;
+        margin: 10px 0 0;
+        border-radius: 13px;
+        background: #ffd5bc;
+        padding: 8px;
+      }
+      #game .guess-row[hidden] { display: none; }
+      .guess-topline { display: flex; justify-content: space-between; margin: 2px 0 6px; color: #6137e9; font-size: 8px; font-weight: 650; }
+      .guess-topline span:last-child { color: #826c61; font-weight: 400; }
+      .guess-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 8px; }
+      .guess-slot {
+        display: grid;
+        min-height: 34px;
+        place-items: center;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
+        font-size: 17px;
+        font-weight: 700;
+      }
+      .guess-slot.is-empty { color: #7047f4; outline: 1px solid #7047f4; outline-offset: -1px; }
+      .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+      .keypad button {
+        min-height: 31px;
+        border: 0;
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .keypad button.is-used,
+      .keypad button.is-used:disabled { background: #e9e5dd; color: var(--text); opacity: 1; }
+      .keypad button.keypad-action { background: var(--orange); color: #fff; font-size: 9px; }
+      .keypad button:disabled { opacity: .48; }
+      .keypad button.keypad-action:disabled { opacity: .48; }
+      .keypad-submit {
+        width: 100%;
+        min-height: 32px;
+        margin-top: 6px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--orange);
+        color: #fff;
+        font-size: 9px;
+      }
+      .keypad-submit:disabled { cursor: not-allowed; opacity: .75; }
+      @media (max-width: 600px) {
+        .page.is-playing { height: 100svh; min-height: 100svh; overflow: hidden; }
+        .page.is-playing > main { height: 100%; min-height: 0; }
+        #game:not([hidden]) {
+          display: flex;
+          height: 100%;
+          min-height: 0;
+          flex-direction: column;
+          padding-top: 16px;
+          padding-bottom: max(8px, env(safe-area-inset-bottom));
+        }
+        #game .game-grid { display: block; min-height: 0; flex: 1; }
+        #game .main-column { display: flex; height: 100%; min-height: 0; flex-direction: column; }
+        #game .main-column > #players-card { order: 0; }
+        #game .main-column > #secret-card { order: 0; }
+        #game .main-column > #turn-card { order: 1; }
+        #game .main-column > #history-card { order: 2; }
+        #game #history-card {
+          display: flex;
+          min-height: 0;
+          flex: 1;
+          flex-direction: column;
+        }
+        #game .history-list {
+          min-height: 0;
+          flex: 1;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          align-content: start;
+          scrollbar-width: thin;
+        }
+      }
+      #game[data-mode="1P"] .room-code,
+      #game[data-mode="1P"] #copy-room,
+      #game[data-mode="1P"] #secret-card { display: none; }
+      #game[data-mode="1P"] .room-tools { display: flex; }
+      #game[data-mode="1P"] #home-button { order: 0; margin: 0; }
+      #game[data-mode="1P"] .room-brand { order: 1; }
+      #game[data-mode="1P"] #pause-game { order: 2; }
+      @media (min-width: 601px) {
+        .page { min-height: min(100vh, 900px); margin: 0 auto; }
+        .app-home, .room-screen, .game { padding-right: 18px; padding-left: 18px; }
+      }
+      @media (max-width: 380px) {
+        #game .turn-panel h2 { font-size: 20px; }
+        #game .game { padding-right: 10px; padding-left: 10px; }
+        #game[data-mode="2P"] .room-tools { gap: 4px; }
+        #game[data-mode="2P"] .room-tools .button { padding: 0 8px; font-size: 8px; }
+      }
     </style>
     <script src="https://unpkg.com/mqtt/dist/mqtt.min.js" defer></script>
     <script>
@@ -370,10 +824,16 @@
       (() => {
         const $ = (selector) => document.querySelector(selector);
         const elements = {
+          page: $(".page"),
           connection: $("#connection"),
           connectionText: $("#connection-text"),
           setup: $("#home"),
           lobby: $("#lobby"),
+          roomActions: $("#room-actions"),
+          roomWaiting: $("#room-waiting"),
+          roomWaitingStatus: $("#room-waiting-status"),
+          roomWaitingCode: $("#room-waiting-code"),
+          roomWaitingCopy: $("#waiting-copy"),
           modeOne: $("#mode-one"),
           modeTwo: $("#mode-two"),
           gameTile: $("#game-tile"),
@@ -383,6 +843,7 @@
           secretCard: $("#secret-card"),
           turnCard: $("#turn-card"),
           gameTitle: $("#game-title"),
+          modeBadge: $("#mode-badge"),
           game: $("#game"),
           name: $("#player-name"),
           room: $("#room-code-input"),
@@ -399,6 +860,12 @@
           guessForm: $("#guess-form"),
           guess: $("#guess-input"),
           guessSubmit: $("#guess-submit"),
+          guessSlots: $("#guess-slots"),
+          keypad: $("#keypad"),
+          keypadSubmit: $("#keypad-submit"),
+          pause: $("#pause-game"),
+          soloSecret: $("#solo-secret"),
+          greeting: $("#greeting-name"),
           history: $("#history"),
           code: $("#room-code"),
           copy: $("#copy-room"),
@@ -422,6 +889,7 @@
         let mode = "1P";
         let soloMode = false;
         let soloSecret = "";
+        let soloPaused = false;
 
         const roomTopic = () => `fourfold/1a2b/v1/${room}`;
         const playerTopic = (id) => `${roomTopic()}/players/${id}/presence`;
@@ -453,6 +921,8 @@
           elements.name.value = playerName;
           localStorage.setItem("fourfold.name", playerName);
           soloMode = true;
+          soloPaused = false;
+          elements.page.classList.add("is-playing");
           soloSecret = createSecret();
           room = "";
           playerId = "solo";
@@ -466,10 +936,12 @@
           elements.game.hidden = false;
           elements.game.dataset.mode = "1P";
           elements.gameTitle.textContent = "1A2B";
+          elements.modeBadge.textContent = "1P · Solo";
           elements.playersCard.hidden = true;
           elements.secretCard.hidden = true;
+          elements.soloSecret.hidden = false;
           elements.copy.hidden = true;
-          setBanner("Guess the 4-digit code.");
+          setBanner("Find the secret. Every clue counts.");
           render();
         }
         const publish = (topic, value, retain = true) => new Promise((resolve, reject) => {
@@ -586,17 +1058,23 @@
             joined = true;
             joining = false;
             elements.setup.hidden = true;
-            elements.lobby.hidden = true;
-            elements.game.hidden = false;
+            elements.roomActions.hidden = true;
+            elements.roomWaiting.hidden = false;
+            elements.roomWaitingCode.textContent = room;
+            elements.lobby.hidden = false;
+            elements.game.hidden = true;
             soloMode = false;
             elements.game.dataset.mode = "2P";
             elements.gameTitle.textContent = "1A2B";
-            elements.playersCard.hidden = false;
+            elements.modeBadge.textContent = "2P · Friends";
+            elements.playersCard.hidden = true;
             elements.secretCard.hidden = false;
+            elements.soloSecret.hidden = true;
             elements.copy.hidden = false;
             elements.code.textContent = room;
             setBanner("Choose a secret four-digit number with no repeated digits, then ready up.");
             render();
+            updateRoomWaiting();
             maybeStartGame();
           } catch (error) {
             elements.roomError.textContent = "Could not join the room. Try again.";
@@ -621,6 +1099,7 @@
             players[data.id] = { ...previous, ...data };
             if (!data.online && data.id !== playerId) players[data.id].ready = Boolean(previous.ready);
             renderPlayers();
+            updateRoomWaiting();
             maybeStartGame();
             return;
           }
@@ -638,6 +1117,7 @@
             if (!Number.isInteger(turn) || turn < 1) return;
             if (parts[2] === "guess" && typeof data.guess === "string" && data.by) {
               guesses[turn] = data;
+              updateGuessSlots();
               renderHistory();
               if (data.to === playerId && gameState?.turn === turn && mySecret) {
                 answerGuess(turn, data);
@@ -655,6 +1135,19 @@
         function getPlayers() {
           return Object.values(players).filter((player) => player.online !== false)
             .sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0) || a.id.localeCompare(b.id));
+        }
+
+        function updateRoomWaiting() {
+          if (!joined) return;
+          const onlinePlayers = getPlayers();
+          if (onlinePlayers.length < 2) {
+            elements.roomWaitingStatus.textContent = "Waiting for a player to join your room.";
+            return;
+          }
+          elements.lobby.hidden = true;
+          elements.game.hidden = false;
+          elements.page.classList.add("is-playing");
+          render();
         }
 
         function maybeStartGame() {
@@ -748,21 +1241,29 @@
             else if (!isMyTurn) setBanner("Waiting for your opponent’s guess.");
             processCurrentResult();
           }
+          updateGuessSlots();
           renderHistory();
         }
 
         function renderSoloGame() {
           elements.turnNumber.textContent = String(gameState.turn);
-          elements.guessForm.hidden = gameState.phase === "won";
-          elements.guessSubmit.disabled = false;
+          elements.guessForm.hidden = gameState.phase === "won" || soloPaused;
+          elements.guessSubmit.disabled = gameState.phase === "won" || soloPaused;
+          elements.pause.textContent = soloPaused ? "Resume" : "Ⅱ Pause";
+          elements.soloSecret.hidden = false;
+          updateGuessSlots();
           if (gameState.phase === "won") {
             elements.turnTitle.textContent = "You got it!";
             elements.turnHint.textContent = "";
             setBanner(`The code was ${soloSecret}.`);
+          } else if (soloPaused) {
+            elements.turnTitle.textContent = "Game paused";
+            elements.turnHint.textContent = "";
+            setBanner("Take a break. Your game is saved on this device.");
           } else {
             elements.turnTitle.textContent = "Guess the code";
             elements.turnHint.textContent = "";
-            setBanner("Enter 4 different digits.");
+            setBanner("Find the secret. Every clue counts.");
           }
           renderHistory();
         }
@@ -798,7 +1299,9 @@
             if (results[turn]) {
               const bulls = document.createElement("span");
               bulls.textContent = `${results[turn].a}A`;
-              outcome.append(bulls, document.createTextNode(` ${results[turn].b}B`));
+              const cows = document.createElement("span");
+              cows.textContent = `${results[turn].b}B`;
+              outcome.append(bulls, cows);
             } else {
               outcome.textContent = "…";
             }
@@ -814,6 +1317,7 @@
           guesses[turn] = { turn, guess: value, by: playerId, at: Date.now() };
           results[turn] = { a, b };
           elements.guess.value = "";
+          updateGuessSlots();
           if (a === 4) gameState = { ...gameState, phase: "won" };
           else gameState = { ...gameState, turn: turn + 1 };
           render();
@@ -852,7 +1356,8 @@
         elements.gameTile.addEventListener("click", () => {
           if (mode === "1P") startSoloGame();
           else {
-            elements.setup.hidden = true;
+            elements.roomActions.hidden = false;
+            elements.roomWaiting.hidden = true;
             elements.lobby.hidden = false;
             elements.roomError.textContent = "";
           }
@@ -921,6 +1426,7 @@
           const guess = { turn, guess: value, by: playerId, to: getPlayers().find((player) => player.id !== playerId)?.id, at: Date.now() };
           guesses[turn] = guess;
           elements.guess.value = "";
+          updateGuessSlots();
           render();
           try {
             await publish(`${roomTopic()}/moves/${turn}/guess`, guess);
@@ -930,6 +1436,52 @@
             render();
           }
         });
+        function updateGuessSlots() {
+          if (!elements.guessSlots) return;
+          const value = elements.guess.value;
+          [...elements.guessSlots.children].forEach((slot, index) => {
+            slot.textContent = value[index] || (index === value.length ? "−" : "");
+            slot.classList.toggle("is-empty", index === value.length);
+          });
+          elements.keypad.querySelectorAll("[data-digit]").forEach((button) => {
+            const used = value.includes(button.dataset.digit);
+            button.disabled = used;
+            button.classList.toggle("is-used", used);
+            button.setAttribute("aria-pressed", String(used));
+          });
+          elements.keypadSubmit.disabled = value.length !== 4 || new Set(value).size !== value.length ||
+            (soloMode && (soloPaused || gameState?.phase === "won")) ||
+            (!soloMode && (!gameState || gameState.phase !== "playing" || gameState.activePlayerId !== playerId ||
+              Boolean(guesses[gameState.turn]) || !mySecret));
+          elements.keypadSubmit.textContent = value.length === 4 ? "Submit guess" : "Add one more digit to submit";
+          const count = document.querySelector("#guess-count");
+          if (count) count.textContent = `GUESS ${String(Object.keys(guesses).length + 1).padStart(2, "0")}`;
+        }
+        elements.keypad.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button || button.disabled) return;
+          const current = elements.guess.value;
+          if (button.dataset.digit && current.length < 4) {
+            elements.guess.value = `${current}${button.dataset.digit}`;
+          } else if (button.dataset.action === "clear") {
+            elements.guess.value = "";
+          } else if (button.dataset.action === "delete") {
+            elements.guess.value = current.slice(0, -1);
+          }
+          updateGuessSlots();
+        });
+        elements.guess.addEventListener("input", () => {
+          elements.guess.value = elements.guess.value.replace(/\D/g, "").slice(0, 4);
+          updateGuessSlots();
+        });
+        elements.keypadSubmit.addEventListener("click", () => {
+          if (!elements.keypadSubmit.disabled) elements.guessForm.requestSubmit();
+        });
+        elements.pause.addEventListener("click", () => {
+          if (!soloMode || gameState?.phase === "won") return;
+          soloPaused = !soloPaused;
+          renderSoloGame();
+        });
         elements.copy.addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(room);
@@ -937,6 +1489,15 @@
             window.setTimeout(() => { elements.copy.textContent = "Copy invite"; }, 1500);
           } catch {
             setBanner(`Share room code ${room} with your opponent.`, "neutral");
+          }
+        });
+        elements.roomWaitingCopy.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(room);
+            elements.roomWaitingCopy.textContent = "Copied";
+            window.setTimeout(() => { elements.roomWaitingCopy.textContent = "Copy room code"; }, 1500);
+          } catch (error) {
+            elements.roomWaitingStatus.textContent = `Could not copy the room code: ${error.message}. Share ${room} with your friend.`;
           }
         });
         function returnHome() {
@@ -960,20 +1521,28 @@
           gameState = null;
           soloMode = false;
           soloSecret = "";
+          soloPaused = false;
           handledResults = new Set();
           joined = false;
           joining = false;
           elements.setup.hidden = false;
+          elements.page.classList.remove("is-playing");
           elements.lobby.hidden = true;
+          elements.roomActions.hidden = false;
+          elements.roomWaiting.hidden = true;
+          elements.roomWaitingCopy.textContent = "Copy room code";
+          elements.roomWaitingCode.textContent = "------";
           elements.game.hidden = true;
           elements.game.dataset.mode = "";
           elements.create.disabled = false;
           elements.join.disabled = false;
           elements.secret.value = "";
           elements.guess.value = "";
+          updateGuessSlots();
           elements.playersCard.hidden = false;
           elements.secretCard.hidden = false;
           elements.copy.hidden = false;
+          elements.soloSecret.hidden = true;
           elements.roomError.textContent = "";
           elements.room.value = "";
           setConnection("offline", "Not connected");
@@ -988,11 +1557,19 @@
           elements.join.disabled = true;
           console.error("MQTT library unavailable; online multiplayer is disabled.");
         }
-        elements.name.value = localStorage.getItem("fourfold.name") || "";
+        elements.name.value = localStorage.getItem("fourfold.name") || "Alex";
+        elements.greeting.textContent = elements.name.value;
+        $("#edit-name").addEventListener("click", () => elements.name.focus());
         elements.name.addEventListener("change", () => {
           const name = validName(elements.name.value);
           elements.name.value = name;
-          if (name) localStorage.setItem("fourfold.name", name);
+          if (name) {
+            localStorage.setItem("fourfold.name", name);
+            elements.greeting.textContent = name;
+          }
+        });
+        elements.name.addEventListener("input", () => {
+          elements.greeting.textContent = validName(elements.name.value) || "friend";
         });
       })();
       });
@@ -1001,7 +1578,7 @@
   <body>
     <div class="page">
       <header class="topbar">
-        <div class="brand"><span class="brand-mark">4F</span> fourfold</div>
+        <div class="brand"><span class="brand-mark">4F</span> playroom</div>
         <div class="connection" id="connection" data-state="offline" role="status" aria-live="polite">
           <span class="connection-dot"></span><span id="connection-text">Not connected</span>
         </div>
@@ -1009,44 +1586,80 @@
 
       <main>
         <section class="app-home" id="home">
-          <h1 class="home-title">Play 1A2B</h1>
+          <h1 class="home-title">playroom</h1>
           <div class="home-field">
-            <label class="sr-only" for="player-name">Name</label>
-            <input class="text-input" id="player-name" maxlength="20" placeholder="Your name" autocomplete="nickname">
+            <div class="name-edit">
+              <label for="player-name"><span class="name-caption">Name</span><input id="player-name" maxlength="20" placeholder="Your name" autocomplete="nickname"></label>
+              <button type="button" id="edit-name">Edit</button>
+            </div>
           </div>
           <div class="mode-switch" aria-label="Player mode">
-            <button class="mode-option" id="mode-one" type="button" aria-pressed="true">1P</button>
-            <button class="mode-option" id="mode-two" type="button" aria-pressed="false">2P</button>
+            <button class="mode-option" id="mode-one" type="button" aria-pressed="true">1P · Solo</button>
+            <button class="mode-option" id="mode-two" type="button" aria-pressed="false">2P · Friends</button>
           </div>
-          <button class="game-tile" id="game-tile" type="button">
-            <strong>1A2B</strong><span aria-hidden="true">→</span>
-          </button>
+          <h2 class="home-greeting">Good to see you, <span id="greeting-name">Alex</span>.</h2>
+          <div class="game-list">
+            <button class="game-tile" id="game-tile" type="button">
+              <span class="tile-copy"><strong>1A2B</strong><small>Deduce the secret 4-digit code.</small></span><span class="tile-action">Play →</span>
+            </button>
+            <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Memory match</strong><small>Find pairs. Flex your memory.</small></span><span class="tile-action">Soon</span></button>
+            <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Four in a row</strong><small>A classic duel of strategy.</small></span><span class="tile-action">Soon</span></button>
+            <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Memory match</strong><small>Find pairs. Flex your memory.</small></span><span class="tile-action">Soon</span></button>
+            <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Four in a row</strong><small>A classic duel of strategy.</small></span><span class="tile-action">Soon</span></button>
+          </div>
         </section>
 
         <section class="room-screen" id="lobby" hidden>
-          <button class="button button-quiet" id="back-home" type="button">← Home</button>
-          <h1>Join a room</h1>
-          <div class="room-actions">
-            <button class="button button-primary" id="create-room" type="button">New room</button>
-            <div class="room-join">
-              <label class="sr-only" for="room-code-input">Room code</label>
-              <input class="text-input room-input" id="room-code-input" maxlength="6" placeholder="Room code" autocomplete="off">
-              <button class="button button-secondary" id="join-room" type="button">Join</button>
+          <div class="room-sheet">
+            <div class="room-sheet-header">
+              <div class="room-kicker">1A2B / TWO PLAYERS</div>
+              <button class="button button-quiet" id="back-home" type="button">Close</button>
             </div>
+            <h1>Better with a rival.</h1>
+            <p class="room-description">Create a private room or join a friend’s game.</p>
+            <div class="room-actions" id="room-actions">
+              <div class="room-create-card">
+                <h2>Start your own room</h2>
+                <p>Get a 6-character code to share<br>with a friend.</p>
+                <button class="button button-primary" id="create-room" type="button">Create room →</button>
+              </div>
+              <div class="room-divider">OR</div>
+              <div><h2 class="room-invite-title">Have an invite?</h2><p class="room-invite-copy">Enter your friend's room code.</p></div>
+              <div class="room-join">
+                <label class="sr-only" for="room-code-input">Room code</label>
+                <input class="text-input room-input" id="room-code-input" maxlength="6" placeholder="e.g. K7M2XP" autocomplete="off">
+                <button class="button button-secondary" id="join-room" type="button">Join room</button>
+              </div>
+            </div>
+            <div class="room-waiting" id="room-waiting" hidden>
+              <div class="room-waiting-card">
+                <span class="room-waiting-dot" aria-hidden="true"></span>
+                <div class="room-waiting-copy">
+                  <strong id="room-waiting-status">Waiting for a player to join your room.</strong>
+                  <span>Share this code with your friend to join.</span>
+                </div>
+              </div>
+              <div class="room-waiting-code">
+                <span>ROOM CODE</span>
+                <strong id="room-waiting-code">------</strong>
+              </div>
+              <button class="button button-secondary" id="waiting-copy" type="button">Copy room code</button>
+            </div>
+            <p class="room-error" id="room-error" role="status" aria-live="polite"></p>
           </div>
-          <p class="room-error" id="room-error" role="status" aria-live="polite"></p>
         </section>
 
         <section class="game" id="game" hidden aria-label="1A2B game">
           <div class="room-heading">
-            <div>
-              <h1 id="game-title">1A2B</h1>
-            </div>
             <div class="room-tools">
+              <button class="button button-quiet" id="home-button" type="button">Exit</button>
+              <span class="room-brand">playroom</span>
+              <button class="button button-quiet" id="pause-game" type="button">Ⅱ Pause</button>
               <div class="room-code"><span>ROOM</span><strong id="room-code">------</strong></div>
               <button class="button button-secondary" id="copy-room" type="button">Copy invite</button>
-              <button class="button button-quiet" id="home-button" type="button">Home</button>
             </div>
+            <h1 id="game-title">1A2B</h1>
+            <span class="mode-badge" id="mode-badge">1P · Solo</span>
           </div>
 
           <div class="game-grid">
@@ -1089,20 +1702,32 @@
                   <span class="turn-number" id="turn-number">—</span>
                 </div>
                 <div class="game-banner" id="game-banner" data-kind="neutral" role="status" aria-live="polite"></div>
-                <form class="guess-row" id="guess-form" hidden>
-                  <label class="sr-only" for="guess-input">Guess four-digit number</label>
-                  <input class="text-input digits-input" id="guess-input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="Your guess" autocomplete="off">
-                  <button class="button button-primary" id="guess-submit" type="submit">Submit guess</button>
-                </form>
+                <section class="solo-secret-panel" id="solo-secret" hidden aria-label="Secret code">
+                  <strong>The secret code</strong><div aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                </section>
                 <p class="sr-only" id="turn-hint"></p>
               </section>
 
               <section class="card game-card" id="history-card">
                 <div class="section-heading">
-                  <h2>Guesses</h2>
+                  <h2>Your guesses</h2>
                   <span class="step-label">LATEST FIRST</span>
                 </div>
                 <div class="history-list" id="history" aria-live="polite"></div>
+                <form class="guess-row" id="guess-form" hidden>
+                  <label class="sr-only" for="guess-input">Guess four-digit number</label>
+                  <input class="sr-only" id="guess-input" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off">
+                  <button class="sr-only" id="guess-submit" type="submit">Submit guess</button>
+                  <div class="guess-topline"><span id="guess-count">GUESS 01</span><span>4 digits · no repeats</span></div>
+                  <div class="guess-slots" id="guess-slots" aria-hidden="true"><span class="guess-slot is-empty">−</span><span class="guess-slot"></span><span class="guess-slot"></span><span class="guess-slot"></span></div>
+                  <div class="keypad" id="keypad" aria-label="Number keypad">
+                    <button type="button" data-digit="1">1</button><button type="button" data-digit="2">2</button><button type="button" data-digit="3">3</button>
+                    <button type="button" data-digit="4">4</button><button type="button" data-digit="5">5</button><button type="button" data-digit="6">6</button>
+                    <button type="button" data-digit="7">7</button><button type="button" data-digit="8">8</button><button type="button" data-digit="9">9</button>
+                    <button class="keypad-action" type="button" data-action="clear">Clear</button><button type="button" data-digit="0">0</button><button class="keypad-action" type="button" data-action="delete">Delete</button>
+                  </div>
+                  <button class="keypad-submit" id="keypad-submit" type="button">Add one more digit to submit</button>
+                </form>
               </section>
             </div>
 
