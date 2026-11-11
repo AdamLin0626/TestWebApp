@@ -7,9 +7,9 @@ export class A1B2View {
     this.gameView.render(state, getPlayers, onCurrentResult);
   }
 
-  mountHandlers({ onSubmit, onDigit, onClear, onBackspace, onInput, restart, onRestart } = {}) {
+  mountHandlers({ onSubmit, onDigit, onClear, onBackspace, onInput } = {}) {
     const elements = this.gameView.elements;
-    this.handlers = { onSubmit, onDigit, onClear, onBackspace, onInput, onRestart };
+    this.handlers = { onSubmit, onDigit, onClear, onBackspace, onInput };
     this.handleFormSubmit = (event) => {
       event.preventDefault();
       this.handlers?.onSubmit?.(elements.guess.value);
@@ -22,12 +22,10 @@ export class A1B2View {
       else if (button.dataset.action === "delete") this.handlers?.onBackspace?.();
     };
     this.handleInput = () => this.handlers?.onInput?.();
-    this.handleRestart = () => this.handlers?.onRestart?.();
     elements.guessForm.addEventListener("submit", this.handleFormSubmit);
     elements.keypad.addEventListener("click", this.handleKeypadClick);
     elements.guess.addEventListener("input", this.handleInput);
     elements.keypadSubmit.addEventListener("click", this.handleFormSubmit);
-    restart.addEventListener("click", this.handleRestart);
     return () => this.dispose();
   }
 
@@ -41,7 +39,6 @@ export class A1B2View {
     elements.keypad.removeEventListener("click", this.handleKeypadClick);
     elements.guess.removeEventListener("input", this.handleInput);
     elements.keypadSubmit.removeEventListener("click", this.handleFormSubmit);
-    this.gameView.elements.restart.removeEventListener("click", this.handleRestart);
     this.handlers = null;
   }
 }

@@ -1,8 +1,6 @@
 const STYLE = `
-.chess-mvc-root{--chess-ink:#342c3b;--chess-paper:#f5f2ea;--chess-orange:#e48755;--chess-purple:#6437e8;min-height:100dvh;color:var(--chess-ink);font:500 13px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;background:var(--chess-paper);padding:max(12px,env(safe-area-inset-top)) 14px max(86px,env(safe-area-inset-bottom));box-sizing:border-box;max-width:520px;margin:auto}
+.chess-mvc-root{--chess-ink:#342c3b;--chess-paper:#f5f2ea;--chess-orange:#e48755;--chess-purple:#6437e8;display:flex;min-height:0;flex:1;flex-direction:column;color:var(--chess-ink);font:500 13px/1.4 Inter,ui-sans-serif,system-ui,sans-serif;background:transparent;padding:0;box-sizing:border-box;max-width:520px;margin:auto}
 .chess-mvc-root *{box-sizing:border-box}.chess-mvc-root button{font:inherit;color:inherit}
-.chess-mvc-root .chess-header{display:grid;grid-template-columns:1fr auto 1fr;grid-template-rows:auto auto;align-items:center;gap:8px;margin-bottom:10px}
-.chess-mvc-root .chess-header h2{grid-column:2;grid-row:1;margin:0;font-size:15px;white-space:nowrap}.chess-mvc-root .chess-mode{grid-column:1;grid-row:2;justify-self:start;border-radius:14px;background:#ffe9df;padding:6px 9px;color:#d97843;font-size:9px;font-weight:750}.chess-mvc-root .chess-actions{grid-column:1/-1;grid-row:1;display:flex;justify-content:space-between;pointer-events:none}.chess-mvc-root .chess-actions button{pointer-events:auto}.chess-mvc-root .chess-header .chess-turn{display:none}
 .chess-mvc-root .chess-layout{display:flex;flex-direction:column;gap:9px;align-items:stretch}
 .chess-mvc-root .chess-board{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));width:100%;max-width:430px;margin:0 auto;aspect-ratio:1;border:3px solid #594d61;border-radius:9px;overflow:hidden}
 .chess-mvc-root .chess-square{border:0;padding:0;display:grid;place-items:center;position:relative;cursor:pointer;min-width:0;aspect-ratio:1}
@@ -21,7 +19,6 @@ const STYLE = `
 .chess-mvc-root .chess-history li:nth-child(odd){background:#f7f1e9}.chess-mvc-root .chess-captures{min-height:22px;display:flex;flex-wrap:wrap;gap:2px}
 .chess-mvc-root .chess-captures .chess-piece{width:22px;height:22px}.chess-mvc-root .chess-status{margin:0;color:var(--chess-purple);font-weight:700}
 .chess-mvc-root[data-player="p2"] .chess-board{transform:rotate(180deg)}.chess-mvc-root[data-player="p2"] .chess-board .chess-piece{transform:rotate(180deg)}
-.chess-mvc-root .chess-exit{min-height:34px;border:1px solid #e6ded2;background:#fff;border-radius:10px;padding:6px 11px;font-size:10px;font-weight:650;cursor:pointer}
 .chess-mvc-root .chess-promotion{display:flex;gap:8px;margin-top:12px;justify-content:center}.chess-mvc-root .chess-promotion button{border:1px solid #e1d6c6;background:#fffdf9;border-radius:9px;padding:8px;cursor:pointer}
 .chess-mvc-root button:focus-visible{outline:3px solid var(--chess-orange);outline-offset:2px}
 .chess-mvc-root .chess-turn-banner{position:fixed;z-index:10;right:max(12px,calc((100vw - 496px)/2));bottom:max(10px,env(safe-area-inset-bottom));left:max(12px,calc((100vw - 496px)/2));border-radius:13px;background:#252333;padding:11px;color:#fff;text-align:center;font-size:11px;font-weight:700;box-shadow:0 5px 16px #342c3b22}
@@ -70,10 +67,6 @@ export class ChessView {
         this.handlers?.onPromotion?.(promotion.dataset.promotion);
         return;
       }
-      const exit = event.target.closest('[data-exit]');
-      if (exit && this.container.contains(exit)) this.handlers?.onExit?.();
-      const restart = event.target.closest('[data-restart]');
-      if (restart && this.container.contains(restart)) this.handlers?.onRestart?.();
     };
     this.container.classList.add('chess-mvc-root');
     this.container.addEventListener('click', this.boundClick);
@@ -124,11 +117,11 @@ export class ChessView {
     const colorName = (color) => t(color === 'w' ? 'White' : 'Black');
     const capturesFor = (color) => color === 'w' ? whiteCaptures : blackCaptures;
     this.container.dataset.player = state.playerId;
-    this.container.innerHTML = `<style>${STYLE}</style><header class="chess-header"><h2>${t('Chess')}</h2><span class="chess-mode">${t(state.mode === '2P' ? '2P · Pass & Play' : '1P · Solo')}</span><div class="chess-actions"><button type="button" class="chess-exit" data-exit>${t('Exit')}</button><button type="button" class="chess-exit" data-restart>${t('Restart')}</button></div><strong class="chess-turn" aria-live="polite">${turnText}</strong></header><div class="chess-layout"><div class="chess-player${state.turn === topColor ? ' is-active' : ''}"><span>${colorName(topColor)}</span><div class="chess-captures" aria-label="${t('Captured pieces')}">${capturesFor(topColor)}</div></div><section><div class="chess-board" role="grid" aria-label="${t('Chess board')}">${board}</div>${promotion}</section><div class="chess-player${state.turn === bottomColor ? ' is-active' : ''}"><span>${colorName(bottomColor)} · ${t('You')}</span><div class="chess-captures" aria-label="${t('Captured pieces')}">${capturesFor(bottomColor)}</div></div><aside class="chess-panel"><section class="chess-card history-card"><h3>${t('Move history')}</h3><ol class="chess-history">${moveRows || `<li>${t('No moves yet')}</li>`}</ol></section></aside></div><div class="chess-turn-banner" role="status" aria-live="polite">${turnText}</div>`;
+    this.container.innerHTML = `<style>${STYLE}</style><div class="chess-layout"><div class="chess-player${state.turn === topColor ? ' is-active' : ''}"><span>${colorName(topColor)}</span><div class="chess-captures" aria-label="${t('Captured pieces')}">${capturesFor(topColor)}</div></div><section><div class="chess-board" role="grid" aria-label="${t('Chess board')}">${board}</div>${promotion}</section><div class="chess-player${state.turn === bottomColor ? ' is-active' : ''}"><span>${colorName(bottomColor)} · ${t('You')}</span><div class="chess-captures" aria-label="${t('Captured pieces')}">${capturesFor(bottomColor)}</div></div><aside class="chess-panel"><section class="chess-card history-card"><h3>${t('Move history')}</h3><ol class="chess-history">${moveRows || `<li>${t('No moves yet')}</li>`}</ol></section></aside></div><div class="chess-turn-banner" role="status" aria-live="polite">${turnText}</div>`;
   }
 
-  mountHandlers({ onSquare, onPromotion, onExit, onRestart } = {}) {
-    this.handlers = { onSquare, onPromotion, onExit, onRestart };
+  mountHandlers({ onSquare, onPromotion } = {}) {
+    this.handlers = { onSquare, onPromotion };
   }
 
   dispose() {

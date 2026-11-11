@@ -10,7 +10,6 @@ export class BattleshipController {
     mode = '1P',
     playerId = 'p1',
     transport = null,
-    onExit = () => {},
     onError = () => {},
     t = (value) => value,
   } = {}) {
@@ -19,7 +18,6 @@ export class BattleshipController {
     this.mode = mode === '2P' ? '2P' : '1P';
     this.playerId = this.mode === '1P' ? 'p1' : (PLAYER_IDS.includes(playerId) ? playerId : 'p1');
     this.transport = transport;
-    this.onExit = onExit;
     this.onError = onError;
     this.t = t;
     this.model = new BattleshipModel({ mode: this.mode, playerId: this.playerId });
@@ -103,12 +101,6 @@ export class BattleshipController {
   handleAction(action) {
     if (this.disposed || !action) return;
     switch (action.type) {
-      case 'exit':
-        this.onExit();
-        break;
-      case 'restart':
-        this._restart();
-        break;
       case 'select-ship':
         this.model.setSelectedShip(action.shipId);
         this.render();
@@ -143,6 +135,10 @@ export class BattleshipController {
     if (typeof this.unsubscribe === 'function') this.unsubscribe();
     this.unsubscribe = null;
     this.view.dispose();
+  }
+
+  restart() {
+    this._restart();
   }
 
   _handleCell(action) {

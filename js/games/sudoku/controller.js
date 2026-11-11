@@ -8,12 +8,8 @@ export class SudokuController {
     playerId = "p1",
     playerName = "Player",
     transport = null,
-    onExit = () => {},
     onError = () => {},
     t = (source) => source,
-    killer = false,
-    model = null,
-    view = null,
   } = {}) {
     if (!root) throw new TypeError("SudokuController requires a root element.");
     this.root = root;
@@ -21,11 +17,10 @@ export class SudokuController {
     this.playerId = playerId;
     this.playerName = playerName;
     this.transport = transport;
-    this.onExit = onExit;
     this.onError = onError;
     this.t = t;
-    this.model = model || new SudokuModel({ killer });
-    this.view = view || new SudokuView(root, { t });
+    this.model = new SudokuModel();
+    this.view = new SudokuView(root, { t });
     this.unsubscribe = null;
     this.interval = null;
     this.started = false;
@@ -40,8 +35,6 @@ export class SudokuController {
       onDigit: (digit) => this.enterDigit(digit),
       onNotes: () => this.toggleNotes(),
       onClear: () => this.clearCell(),
-      onRestart: () => this.restart(),
-      onExit: () => this.onExit(),
     });
     if (this.transport && typeof this.transport.subscribe === "function") {
       this.unsubscribe = this.transport.subscribe((message) => this.receive(message));
@@ -149,7 +142,6 @@ export class SudokuController {
       progress,
       elapsedSeconds: this.model.elapsedSeconds,
       solved: this.model.solved,
-      killer: this.model.killer,
     };
     try {
       const progressPublication = this.transport.publish({

@@ -2,13 +2,12 @@ import { ChessModel, squareIndex } from './model.js';
 import { ChessView } from './view.js';
 
 export class ChessController {
-  constructor({ root, mode = '1P', playerId = 'p1', transport = null, onExit = () => {}, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', transport = null, onError = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('A root element is required');
     this.root = root;
     this.mode = mode;
     this.playerId = playerId;
     this.transport = transport;
-    this.onExit = onExit;
     this.onError = onError;
     this.model = new ChessModel();
     this.view = new ChessView(root, { t });
@@ -28,8 +27,6 @@ export class ChessController {
     this.view.mountHandlers({
       onSquare: (square) => this.handleSquare(square),
       onPromotion: (piece) => this.handlePromotion(piece),
-      onExit: () => this.onExit(),
-      onRestart: () => this.restart(),
     });
     this.render();
     if (this.transport?.subscribe) {

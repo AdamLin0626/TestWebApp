@@ -30,30 +30,13 @@ function parsePuzzle(puzzle) {
   return cells;
 }
 
-function makeCages(solution) {
-  const cages = [];
-  for (let row = 0; row < 9; row += 1) {
-    for (let startColumn = 0; startColumn < 9; startColumn += 3) {
-      const cells = [0, 1, 2].map((offset) => row * 9 + startColumn + offset);
-      cages.push({
-        id: cages.length,
-        cells,
-        sum: cells.reduce((sum, index) => sum + solution[index], 0),
-      });
-    }
-  }
-  return cages;
-}
-
 export class SudokuModel {
-  constructor({ killer = false, puzzle = DEFAULT_PUZZLE } = {}) {
-    this.killer = Boolean(killer);
+  constructor({ puzzle = DEFAULT_PUZZLE } = {}) {
     this.solution = SOLUTION.split("").map(Number);
     this.puzzle = parsePuzzle(puzzle);
     if (this.puzzle.some((value, index) => value && value !== this.solution[index])) {
       throw new TypeError("The supplied puzzle must match the bundled Sudoku solution.");
     }
-    this.cages = this.killer ? makeCages(this.solution) : [];
     this.restart();
   }
 
@@ -150,8 +133,6 @@ export class SudokuModel {
       remoteProgress: this.remoteProgress,
       remoteSolved: this.remoteSolved,
       remoteElapsedSeconds: this.remoteElapsedSeconds,
-      killer: this.killer,
-      cages: this.cages.map((cage) => ({ id: cage.id, cells: [...cage.cells], sum: cage.sum })),
     };
   }
 

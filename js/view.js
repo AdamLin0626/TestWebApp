@@ -21,7 +21,6 @@ export class GameView {
       dotsAndBoxesTile: $("#dots-and-boxes-tile"),
       yahtzeeTile: $("#yahtzee-tile"),
       sudokuTile: $("#sudoku-tile"),
-      killerSudokuTile: $("#killer-sudoku-tile"),
       chessTile: $("#chess-tile"),
       battleshipTile: $("#battleship-tile"),
       backHome: $("#back-home"),
@@ -32,8 +31,10 @@ export class GameView {
       roomCreateButton: $("#create-room"),
       playersCard: $("#players-card"),
       secretCard: $("#secret-card"),
-      roomHeading: $(".room-heading"),
       gameGrid: $(".game-grid"),
+      gameHeader: $("#game-header"),
+      gameSubtitle: $("#game-subtitle"),
+      gameMainFrame: $("#game-main-frame"),
       gameTitle: $("#game-title"),
       modeBadge: $("#mode-badge"),
       game: $("#game"),
@@ -59,30 +60,20 @@ export class GameView {
       soloSecret: $("#solo-secret"),
       greeting: $("#greeting-name"),
       history: $("#history"),
-      code: $("#room-code"),
       leave: $("#home-button"),
       readyStatus: $("#ready-status"),
       ticTacToeGame: $("#tic-tac-toe-game"),
-      ticTacToeExit: $("#tic-tac-toe-exit"),
-      ticTacToeRoomCode: $("#tic-tac-toe-room-code"),
-      ticTacToePlayers: $("#tic-tac-toe-players"),
       ticTacToeStatus: $("#tic-tac-toe-status"),
       ticTacToeBoard: $("#tic-tac-toe-board"),
       dotsAndBoxesGame: $("#dots-and-boxes-game"),
-      dotsExit: $("#dots-game-exit"),
-      dotsRoomCode: $("#dots-room-code"),
-      dotsPlayers: $("#dots-players"),
       dotsStatus: $("#dots-status"),
       dotsScores: $("#dots-scores"),
       dotsBoard: $("#dots-board"),
       yahtzeeGame: $("#yahtzee-game"),
       sudokuGame: $("#sudoku-game"),
-      killerSudokuGame: $("#killer-sudoku-game"),
       chessGame: $("#chess-game"),
       battleshipGame: $("#battleship-game"),
       standaloneError: $("#standalone-error"),
-      yahtzeeExit: $("#yahtzee-exit"),
-      yahtzeeRestart: $("#yahtzee-restart"),
       yahtzeeDice: $("#yahtzee-dice"),
       yahtzeeRoll: $("#yahtzee-roll"),
       yahtzeeRollLabel: $("#yahtzee-roll-label"),
@@ -93,10 +84,6 @@ export class GameView {
       yahtzeeScoreList: $("#yahtzee-score-list"),
       yahtzeeScorecardFooter: $("#yahtzee-scorecard-footer"),
       yahtzeeMatchScores: $("#yahtzee-match-scores"),
-      yahtzeeModeBadge: $("#yahtzee-mode-badge"),
-      yahtzeeRestart: $("#yahtzee-restart"),
-      ticTacToeRestart: $("#tic-tac-toe-restart"),
-      dotsRestart: $("#dots-game-restart"),
       restart: $("#game-restart")
     };
   }
@@ -117,7 +104,41 @@ export class GameView {
     this.elements.modeTwo.setAttribute("aria-pressed", String(mode === "2P"));
   }
 
-  setGameType(gameType) {
+  setGameHeader(gameType, mode) {
+    const titles = {
+      "1a2b": "1A2B",
+      tictactoe: "Tic Tac Toe",
+      dotsandboxes: "點格棋",
+      yahtzee: "快艇骰子",
+      sudoku: "Sudoku",
+      chess: "Chess",
+      battleship: "Battleship"
+    };
+    const subtitles = {
+      "1a2b": "Guess the secret 4-digit number.",
+      tictactoe: "Make three in a row.",
+      dotsandboxes: "Complete boxes by drawing their four sides.",
+      yahtzee: "Roll, hold, and make every count.",
+      sudoku: "Fill every row, column, and box with 1–9.",
+      chess: "Take turns making legal moves. Checkmate wins.",
+      battleship: "Place your fleet and hunt your rival."
+    };
+    const gameLabels = {
+      "1a2b": "1A2B game",
+      tictactoe: "Tic Tac Toe game",
+      dotsandboxes: "Dots and Boxes game",
+      yahtzee: "Yahtzee game",
+      sudoku: "Sudoku game",
+      chess: "Chess game",
+      battleship: "Battleship game"
+    };
+    this.elements.gameTitle.textContent = titles[gameType] || titles["1a2b"];
+    this.elements.gameSubtitle.textContent = subtitles[gameType] || subtitles["1a2b"];
+    this.elements.modeBadge.textContent = mode;
+    this.elements.game.setAttribute("aria-label", gameLabels[gameType] || gameLabels["1a2b"]);
+  }
+
+  setGameType(gameType, mode = "2P") {
     const isTicTacToe = gameType === "tictactoe";
     const isDotsAndBoxes = gameType === "dotsandboxes";
     const titles = {
@@ -126,11 +147,11 @@ export class GameView {
       dotsandboxes: "DOTS AND BOXES",
       yahtzee: "YAHTZEE",
       sudoku: "SUDOKU",
-      killersudoku: "KILLER SUDOKU",
       chess: "CHESS",
       battleship: "BATTLESHIP"
     };
     const title = titles[gameType] || "1A2B";
+    this.setGameHeader(gameType, mode);
     this.elements.roomKicker.textContent = `${title} / TWO PLAYERS`;
     this.elements.roomDescription.textContent = isTicTacToe
       ? "Create a room or join a friend for a moving 3×3 game."
@@ -138,7 +159,7 @@ export class GameView {
         ? "Create a room or join a friend to play 點格棋."
         : gameType === "yahtzee"
           ? "Take turns rolling and scoring with a friend."
-          : ["sudoku", "killersudoku"].includes(gameType)
+          : gameType === "sudoku"
             ? "Race your friend to complete the Sudoku grid."
             : gameType === "chess"
               ? "Play a full game of chess with a friend."
@@ -151,7 +172,7 @@ export class GameView {
         ? "Take turns drawing lines. Complete a box to score and keep your turn."
         : gameType === "yahtzee"
           ? "Take turns rolling five dice and filling your own scorecard. The higher final score wins."
-          : ["sudoku", "killersudoku"].includes(gameType)
+          : gameType === "sudoku"
             ? "Race to complete the same grid. The first player to solve it wins."
             : gameType === "chess"
               ? "Take turns making legal moves. Checkmate wins."
@@ -159,7 +180,7 @@ export class GameView {
                 ? "Place a standard fleet on a 10 × 10 board, then take turns firing."
                 : "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.";
     this.elements.roomCreateButton.textContent = ["tictactoe", "dotsandboxes", "yahtzee", "sudoku",
-      "killersudoku", "chess", "battleship"].includes(gameType)
+      "chess", "battleship"].includes(gameType)
       ? "Create game room →"
       : "Create room →";
   }
@@ -167,13 +188,9 @@ export class GameView {
   renderTicTacToe(state, getPlayers, pendingMove = false) {
     const game = state.gameState;
     const players = game?.players || [];
-    const activePlayers = getPlayers();
     const markFor = (playerId) => players.find((player) => player.id === playerId)?.mark;
     const playerName = (playerId) => state.players[playerId]?.name || "Player";
-    this.elements.ticTacToeRoomCode.textContent = state.room;
-    this.elements.ticTacToePlayers.textContent = players.length
-      ? players.map((player) => `${playerName(player.id)} · ${player.mark}`).join("   ")
-      : activePlayers.map((player) => player.name).join("   ");
+    const activePlayers = getPlayers();
 
     if (!game) {
       this.elements.ticTacToeStatus.textContent = "Waiting for a player to join your room.";
@@ -214,11 +231,6 @@ export class GameView {
     const activePlayers = getPlayers();
     const playerName = (playerId) => state.players[playerId]?.name || "Player";
     const markFor = (playerId) => players.find((player) => player.id === playerId)?.mark || "";
-    this.elements.dotsRoomCode.textContent = state.room || "LOCAL";
-    this.elements.dotsPlayers.textContent = players
-      .map((player) => `${playerName(player.id)} · ${player.mark}`)
-      .join("   ");
-
     if (!game) {
       this.elements.dotsStatus.textContent = "Waiting for a player to join your room.";
     } else if (game.phase === "won") {
@@ -298,10 +310,8 @@ export class GameView {
   renderYahtzee(state, model, pendingMove = false) {
     const game = state.gameState;
     if (!game) {
-      this.elements.yahtzeeModeBadge.textContent = "2P · Friends";
       this.elements.yahtzeeHint.textContent = "Waiting for your friend to join.";
       this.elements.yahtzeeRoll.disabled = true;
-      this.elements.yahtzeeRestart.disabled = true;
       this.elements.yahtzeeDice.replaceChildren();
       this.elements.yahtzeeScoreList.replaceChildren();
       this.elements.yahtzeeMatchScores.replaceChildren();
@@ -321,7 +331,6 @@ export class GameView {
     this.elements.yahtzeeRound.textContent = this.translate("{round} of 13", {
       round: String(Math.min(game.round, 13)).padStart(2, "0")
     });
-    this.elements.yahtzeeModeBadge.textContent = multiPlayer ? "2P · Friends" : "1P · Solo";
     this.elements.yahtzeeMatchScores.hidden = !multiPlayer;
     if (multiPlayer) {
       this.elements.yahtzeeMatchScores.replaceChildren(...game.players.map((player) => {
@@ -437,7 +446,6 @@ export class GameView {
         count: categoriesLeft
       }
     );
-    this.elements.yahtzeeRestart.disabled = pendingMove;
   }
 
   renderPlayers(state, getPlayers) {

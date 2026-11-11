@@ -598,37 +598,8 @@
         gap: 8px;
         margin-bottom: 0;
       }
-      .room-tools .button {
-        flex: 0 0 auto;
-        min-height: 34px;
-        border: 0;
-        border-radius: 12px;
-        background: #e9e5dd;
-        padding: 0 12px;
-        color: var(--text);
-        font-size: 9px;
-      }
       #game #home-button { min-width: 44px; }
       #game #home-button { min-height: 34px; }
-      #game #mode-badge { grid-column: 2; grid-row: 2; align-self: center; justify-self: end; }
-      #game[data-mode="2P"] .room-tools .button { min-height: 34px; }
-      #game[data-mode="2P"] .room-code { min-height: 34px; }
-      #game[data-mode="2P"] .room-tools { position: relative; }
-      #game[data-mode="2P"] .room-code {
-        position: absolute;
-        left: 50%;
-        min-height: 34px;
-        flex-direction: column;
-        justify-content: center;
-        gap: 1px;
-        transform: translateX(-50%);
-        border: 0;
-        background: transparent;
-        padding: 0 4px;
-        font-size: 7px;
-        line-height: 1;
-      }
-      #game[data-mode="2P"] .room-code strong { color: var(--text); font-size: 11px; }
       .mode-badge {
         display: inline-flex;
         align-items: center;
@@ -852,44 +823,6 @@
         flex: 1;
         flex-direction: column;
       }
-      .tic-tac-toe-header {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 12px;
-      }
-      .tic-tac-toe-header .button {
-        min-height: 38px;
-        border: 0;
-        border-radius: 12px;
-        background: #e9e5dd;
-        color: var(--text);
-        font-size: 10px;
-      }
-      .tic-tac-toe-room {
-        display: grid;
-        justify-items: end;
-        gap: 3px;
-        color: var(--muted);
-        font: 8px var(--mono);
-      }
-      #game[data-game="tictactoe"][data-mode="1P"] .tic-tac-toe-room { display: none; }
-      .tic-tac-toe-room strong {
-        color: var(--text);
-        font-size: 12px;
-        letter-spacing: .12em;
-      }
-      .tic-tac-toe-title { grid-column: 1 / -1; }
-      .tic-tac-toe-title h1 {
-        margin: 0;
-        font-size: clamp(26px, 7vw, 34px);
-        letter-spacing: -.06em;
-      }
-      .tic-tac-toe-title p {
-        margin: 7px 0 0;
-        color: var(--muted);
-        font-size: 11px;
-      }
       .tic-tac-toe-status {
         display: grid;
         min-height: 52px;
@@ -944,44 +877,6 @@
         min-height: 0;
         flex: 1;
         flex-direction: column;
-      }
-      .dots-game-header {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        align-items: center;
-        gap: 12px;
-      }
-      .dots-game-header .button {
-        min-height: 38px;
-        border: 0;
-        border-radius: 12px;
-        background: #e9e5dd;
-        color: var(--text);
-        font-size: 10px;
-      }
-      .dots-game-room {
-        display: grid;
-        justify-items: end;
-        gap: 3px;
-        color: var(--muted);
-        font: 8px var(--mono);
-      }
-      #game[data-game="dotsandboxes"][data-mode="1P"] .dots-game-room { display: none; }
-      .dots-game-room strong {
-        color: var(--text);
-        font-size: 12px;
-        letter-spacing: .12em;
-      }
-      .dots-game-title { grid-column: 1 / -1; }
-      .dots-game-title h1 {
-        margin: 0;
-        font-size: clamp(26px, 7vw, 34px);
-        letter-spacing: -.06em;
-      }
-      .dots-game-title p {
-        margin: 7px 0 0;
-        color: var(--muted);
-        font-size: 11px;
       }
       .dots-game-status {
         display: grid;
@@ -1110,35 +1005,6 @@
         min-height: 100dvh;
         flex-direction: column;
       }
-      .yahtzee-header {
-        display: grid;
-        grid-template-columns: 1fr auto;
-        grid-template-rows: auto auto;
-        align-items: center;
-        gap: 8px 12px;
-      }
-      .yahtzee-header .button {
-        min-height: 34px;
-        border: 0;
-        border-radius: 10px;
-        background: #e9e5dd;
-        color: var(--text);
-        font-size: 9px;
-      }
-      #yahtzee-exit { grid-column: 1; grid-row: 1; justify-self: start; }
-      #yahtzee-restart { grid-column: 2; grid-row: 1; justify-self: end; }
-      .yahtzee-title { grid-column: 1; grid-row: 2; }
-      .yahtzee-title h1 {
-        margin: 0;
-        font-size: clamp(24px, 7vw, 32px);
-        letter-spacing: -.06em;
-      }
-      .yahtzee-title p {
-        margin: 4px 0 0;
-        color: var(--muted);
-        font-size: 10px;
-      }
-      .yahtzee-header .mode-badge { grid-column: 2; grid-row: 2; justify-self: end; }
       .yahtzee-summary { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
       .yahtzee-total,
       .yahtzee-round {
@@ -1185,7 +1051,7 @@
       .yahtzee-player-score b { color: var(--text); font: 700 12px var(--mono); }
       .yahtzee-player-score.is-turn { border-color: #e48755; color: #b65f33; }
       .standalone-game[hidden] { display: none; }
-      .standalone-game:not([hidden]) { display: block; min-height: 100%; }
+      .standalone-game:not([hidden]) { display: flex; min-height: 0; flex: 1; flex-direction: column; }
       .yahtzee-roll-label { color: #b65f33; font: 700 8px var(--mono); letter-spacing: .08em; }
       .yahtzee-dice { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
       .yahtzee-die {
@@ -1279,4 +1145,83 @@
         .game-list { gap: 5px; }
         .game-tile,
         .game-tile.is-soon { min-height: clamp(42px, 8.5dvh, 48px); }
+      }
+      #game:not([hidden]) {
+        display: flex;
+        width: min(100%, 520px);
+        min-height: 100dvh;
+        flex-direction: column;
+        margin: 0 auto;
+        padding: max(12px, env(safe-area-inset-top)) 14px max(8px, env(safe-area-inset-bottom));
+        color: #342c3b;
+      }
+      .game-header {
+        display: grid;
+        flex: 0 0 auto;
+        gap: 12px;
+        padding-bottom: 12px;
+      }
+      .game-header-actions {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 8px;
+      }
+      .game-header-actions .button {
+        min-height: 34px;
+        border: 0;
+        border-radius: 10px;
+        background: #e9e5dd;
+        padding: 0 12px;
+        color: #342c3b;
+        font-size: 10px;
+      }
+      #home-button { justify-self: start; }
+      #game-restart { justify-self: end; }
+      #game .mode-badge {
+        justify-self: center;
+        border-radius: 12px;
+        background: #ffd5bc;
+        padding: 6px 12px;
+        color: #b65f33;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .game-heading { text-align: center; }
+      .game-heading h1 {
+        margin: 0;
+        color: #342c3b;
+        font-size: clamp(24px, 7vw, 32px);
+        font-weight: 750;
+        letter-spacing: -.06em;
+        line-height: 1.15;
+      }
+      .game-heading p {
+        margin: 4px 0 0;
+        color: #807785;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .game-main-frame {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
+        border-top: 1px solid #e6ded2;
+        padding-top: 10px;
+      }
+      #game-main-frame > [hidden] { display: none; }
+      #game[data-game="yahtzee"]:not([hidden]),
+      #game[data-game="tictactoe"]:not([hidden]),
+      #game[data-game="dotsandboxes"]:not([hidden]) {
+        display: flex;
+        min-height: 100dvh;
+        flex-direction: column;
+      }
+      #game .game-grid { min-height: 0; flex: 1; }
+      #game .main-column { min-height: 0; }
+      .standalone-game:not([hidden]) { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+      @media (max-width: 600px) {
+        #game:not([hidden]) { padding-right: 14px; padding-left: 14px; }
+        #game-main-frame { min-height: 0; }
       }

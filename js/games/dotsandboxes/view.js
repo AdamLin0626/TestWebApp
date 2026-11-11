@@ -7,17 +7,14 @@ export class DotsAndBoxesView {
     this.gameView.renderDotsAndBoxes(state, getPlayers, pendingMove, localMode);
   }
 
-  mountHandlers(root, onMove, restart, onRestart) {
+  mountHandlers(root, onMove) {
     this.handleClick = (event) => {
       const edge = event.target.closest("[data-edge]");
       if (edge && !edge.disabled && root.contains(edge)) onMove(Number(edge.dataset.edge));
     };
     root.addEventListener("click", this.handleClick);
-    this.handleRestartClick = onRestart;
-    restart.addEventListener("click", this.handleRestartClick);
     return () => {
       root.removeEventListener("click", this.handleClick);
-      restart.removeEventListener("click", this.handleRestartClick);
     };
   }
 }
