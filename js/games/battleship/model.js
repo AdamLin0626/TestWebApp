@@ -204,13 +204,14 @@ export class BattleshipModel {
     return { accepted: true, ...copyShot(shot), by: playerId, targetId, winner: this.state.winner };
   }
 
-  resolveShot(index, playerId, result, sunkShipId = null) {
+  resolveShot(index, playerId, result, sunkShipId = null, shipId = null) {
     if (!PLAYER_IDS.includes(playerId) || !['hit', 'miss'].includes(result)) return false;
     const shot = [...this.state.shots[playerId]].reverse().find(
       (item) => item.index === index && item.result === 'pending',
     );
     if (!shot) return false;
     shot.result = result;
+    shot.shipId = shipId || null;
     shot.sunkShipId = sunkShipId || null;
     const targetId = opponentOf(playerId);
     if (sunkShipId) {

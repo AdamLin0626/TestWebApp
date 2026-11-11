@@ -87,6 +87,7 @@ export class BattleshipController {
         by: message.playerId,
         index: message.index,
         result: result.result,
+        shipId: result.shipId,
         sunkShipId: result.sunkShipId,
         winner: result.winner,
       });
@@ -97,7 +98,14 @@ export class BattleshipController {
       if (message.playerId !== otherPlayer(this.playerId)
         || message.by !== this.playerId
         || !['hit', 'miss'].includes(message.result)) return false;
-      if (!this.model.resolveShot(message.index, this.playerId, message.result, message.sunkShipId)) return false;
+      if (message.result === 'hit' && !BATTLESHIP_FLEET.some(({ id }) => id === message.shipId)) return false;
+      if (!this.model.resolveShot(
+        message.index,
+        this.playerId,
+        message.result,
+        message.sunkShipId,
+        message.shipId,
+      )) return false;
       if (message.winner && PLAYER_IDS.includes(message.winner)) {
         this.model.state.winner = message.winner;
         this.model.state.phase = 'finished';
