@@ -4,6 +4,19 @@ import { initializeI18n } from "./i18n.js";
 import { SudokuController } from "./games/sudoku/controller.js";
 import { ChessController } from "./games/chess/controller.js";
 import { BattleshipController } from "./games/battleship/controller.js";
+import { KillerSudokuController } from "./games/killersudoku/controller.js";
+import { A1B2Model } from "./games/1a2b/model.js";
+import { A1B2View } from "./games/1a2b/view.js";
+import { A1B2Controller } from "./games/1a2b/controller.js";
+import { TicTacToeModel } from "./games/tictactoe/model.js";
+import { TicTacToeView } from "./games/tictactoe/view.js";
+import { TicTacToeController } from "./games/tictactoe/controller.js";
+import { DotsAndBoxesModel } from "./games/dotsandboxes/model.js";
+import { DotsAndBoxesView } from "./games/dotsandboxes/view.js";
+import { DotsAndBoxesController } from "./games/dotsandboxes/controller.js";
+import { YahtzeeModel } from "./games/yahtzee/model.js";
+import { YahtzeeView } from "./games/yahtzee/view.js";
+import { YahtzeeController } from "./games/yahtzee/controller.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
       const i18n = await initializeI18n();
@@ -12,11 +25,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         const state = model.state;
         const view = new GameView(document, i18n.t);
         const elements = view.elements;
+        const a1b2Model = new A1B2Model();
+        const ticTacToeModel = new TicTacToeModel(model);
+        const dotsAndBoxesModel = new DotsAndBoxesModel(model);
+        const yahtzeeModel = new YahtzeeModel(model);
+        const a1b2View = new A1B2View(view);
+        const ticTacToeView = new TicTacToeView(view);
+        const dotsAndBoxesView = new DotsAndBoxesView(view);
+        const yahtzeeView = new YahtzeeView(view);
         const brokerUrl = "wss://broker.hivemq.com:8884/mqtt";
         let client = null;
-        let pendingTicTacToeMove = false;
         let localTicTacToe = false;
-        let pendingDotsMove = false;
         let localDotsBoxes = false;
         let pendingYahtzeeMove = false;
         let isRoomHost = false;
@@ -25,6 +44,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         let standalonePlayerId = "";
         let standaloneSubscriptions = new Set();
         let pendingStandaloneMessages = [];
+        let a1b2Controller = null;
+        let ticTacToeController = null;
+        let dotsAndBoxesController = null;
+        let yahtzeeController = null;
 
         const roomTopic = () => model.roomTopic();
         const playerTopic = (id) => model.playerTopic(id);
@@ -120,8 +143,10 @@ document.addEventListener("DOMContentLoaded", async () => {
               elements.standaloneError.hidden = false;
             }
           };
-          standaloneController = gameType === "sudoku" || gameType === "killersudoku"
-            ? new SudokuController({ ...options, killer: gameType === "killersudoku" })
+          standaloneController = gameType === "sudoku"
+            ? new SudokuController(options)
+            : gameType === "killersudoku"
+              ? new KillerSudokuController(options)
             : gameType === "chess"
               ? new ChessController(options)
               : new BattleshipController(options);
@@ -150,40 +175,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         async function submitDotsMove(edge) {
-          if (pendingDotsMove) return;
-          const nextGame = model.applyDotsAndBoxesMove(state.gameState, state.playerId, edge);
-          if (!nextGame) return;
-          const previousGame = state.gameState;
-          state.gameState = nextGame;
-          pendingDotsMove = true;
-          render();
-          if (localDotsBoxes) {
-            while (state.gameState.phase === "playing" && state.gameState.activePlayerId === "computer") {
-              await new Promise((resolve) => window.setTimeout(resolve, 120));
-              if (!localDotsBoxes) break;
-              const aiEdge = model.chooseDotsAndBoxesMove(state.gameState, "computer");
-              const aiMove = model.applyDotsAndBoxesMove(state.gameState, "computer", aiEdge);
-              if (!aiMove) {
-                pendingDotsMove = false;
-                render();
-                return;
-              }
-              state.gameState = aiMove;
-              render();
-            }
-            pendingDotsMove = false;
-            render();
-            return;
-          }
-          try {
-            await publish(`${roomTopic()}/game`, nextGame);
-          } catch (error) {
-            if (state.gameState === nextGame) state.gameState = previousGame;
-            elements.dotsStatus.textContent = `Could not send your move: ${error.message}`;
-          } finally {
-            pendingDotsMove = false;
-            render();
-          }
+          await dotsAndBoxesController.move(edge);
         }
         function startSoloGame() {
           state.playerName = model.validName(elements.name.value) || "Player";
@@ -191,7 +183,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           localStorage.setItem("fourfold.name", state.playerName);
           state.soloMode = true;
           elements.page.classList.add("is-playing");
-          state.soloSecret = model.createSecret();
+          state.soloSecret = a1b2Model.createSecret();
           state.room = "";
           state.playerId = "solo";
           state.players = { solo: { id: "solo", name: state.playerName, online: true, ready: true } };
@@ -225,14 +217,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             local: { id: "local", name: state.playerName, online: true },
             computer: { id: "computer", name: "Computer", online: true }
           };
-          state.gameState = model.createDotsAndBoxesGame([
+          state.gameState = dotsAndBoxesModel.createGame([
             { id: "local", name: state.playerName },
             { id: "computer", name: "Computer" }
           ]);
           state.joined = false;
           state.soloMode = false;
           localDotsBoxes = true;
-          pendingDotsMove = false;
           elements.setup.hidden = true;
           elements.lobby.hidden = true;
           elements.page.classList.add("is-playing");
@@ -262,7 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           state.room = "";
           state.playerId = "solo";
           state.players = { solo: { id: "solo", name: state.playerName, online: true } };
-          state.gameState = model.createYahtzeeGame();
+          state.gameState = yahtzeeModel.createGame();
           state.joined = false;
           state.soloMode = false;
           localDotsBoxes = false;
@@ -294,14 +285,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             local: { id: "local", name: state.playerName, online: true },
             computer: { id: "computer", name: "Computer", online: true }
           };
-          state.gameState = model.createTicTacToeGame([
+          state.gameState = ticTacToeModel.createGame([
             { id: "local", name: state.playerName },
             { id: "computer", name: "Computer" }
           ]);
           state.joined = false;
           state.soloMode = false;
           localTicTacToe = true;
-          pendingTicTacToeMove = false;
           elements.setup.hidden = true;
           elements.lobby.hidden = true;
           elements.page.classList.add("is-playing");
@@ -323,6 +313,35 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (error) reject(error);
             else resolve();
           });
+        });
+        a1b2Controller = new A1B2Controller({
+          model: a1b2Model,
+          getState: () => state,
+          render: () => render(),
+          publish: (path, message) => publish(`${roomTopic()}/${path}`, message),
+          onBanner: (message, kind) => setBanner(message, kind)
+        });
+        ticTacToeController = new TicTacToeController({
+          model: ticTacToeModel,
+          getState: () => state,
+          isLocal: () => localTicTacToe,
+          publish: (message) => publish(`${roomTopic()}/game`, message),
+          render: () => render(),
+          onError: (error) => { elements.ticTacToeStatus.textContent = `Could not send your move: ${error.message}`; }
+        });
+        dotsAndBoxesController = new DotsAndBoxesController({
+          model: dotsAndBoxesModel,
+          getState: () => state,
+          isLocal: () => localDotsBoxes,
+          publish: (message) => publish(`${roomTopic()}/game`, message),
+          render: () => render(),
+          onError: (error) => { elements.dotsStatus.textContent = `Could not send your move: ${error.message}`; }
+        });
+        yahtzeeController = new YahtzeeController({
+          model: yahtzeeModel,
+          getState: () => state,
+          updateGame: (nextGame) => updateYahtzeeGame(nextGame),
+          render: () => render()
         });
 
         function setRoomInput(value) {
@@ -527,7 +546,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
           }
           if (state.gameType === "dotsandboxes" && parts[0] === "game" &&
-            model.isDotsAndBoxesGame(data) &&
+            dotsAndBoxesModel.isGame(data) &&
             typeof data.moveCount === "number") {
             const currentEpoch = Number(state.gameState?.restartAt || 0);
             const incomingEpoch = Number(data.restartAt || 0);
@@ -595,7 +614,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (state.gameType === "yahtzee") {
             if (!isRoomHost) return;
-            state.gameState = model.createYahtzeeMatch(activePlayers);
+            state.gameState = yahtzeeModel.createMatch(activePlayers);
             publish(`${roomTopic()}/game`, state.gameState).catch((error) =>
               setBanner(`Could not start the game: ${error.message}`, "error")
             );
@@ -604,8 +623,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (state.gameType === "tictactoe" || state.gameType === "dotsandboxes") {
             state.gameState = state.gameType === "dotsandboxes"
-              ? model.createDotsAndBoxesGame(activePlayers)
-              : model.createTicTacToeGame(activePlayers);
+              ? dotsAndBoxesModel.createGame(activePlayers)
+              : ticTacToeModel.createGame(activePlayers);
             publish(`${roomTopic()}/game`, state.gameState)
               .catch((error) => {
                 const status = state.gameType === "dotsandboxes" ? elements.dotsStatus : elements.ticTacToeStatus;
@@ -646,7 +665,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.killerSudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
-            view.renderTicTacToe(state, getPlayers, pendingTicTacToeMove);
+            ticTacToeView.render(state, getPlayers, ticTacToeController.pending);
             i18n.apply();
             return;
           }
@@ -660,7 +679,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.killerSudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
-            view.renderDotsAndBoxes(state, getPlayers, pendingDotsMove, localDotsBoxes);
+            dotsAndBoxesView.render(state, getPlayers, dotsAndBoxesController.pending, localDotsBoxes);
             i18n.apply();
             return;
           }
@@ -674,7 +693,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.killerSudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
-            view.renderYahtzee(state, model, pendingYahtzeeMove);
+            yahtzeeView.render(state, yahtzeeModel, pendingYahtzeeMove);
             i18n.apply();
             return;
           }
@@ -687,7 +706,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.killerSudokuGame.hidden = true;
           elements.chessGame.hidden = true;
           elements.battleshipGame.hidden = true;
-          view.render(state, getPlayers, processCurrentResult);
+          a1b2View.render(state, getPlayers, () => a1b2Controller.processCurrentResult());
           i18n.apply();
         }
 
@@ -715,154 +734,61 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         function rollYahtzeeDice() {
-          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
-          const nextGame = model.rollYahtzeeDice(state.gameState);
-          updateYahtzeeGame(nextGame);
-        }
-
-        async function restartGame(gameType = state.gameType) {
-          const previousGame = state.gameState;
-          if (!previousGame) return;
-          const restartAt = Math.max(Date.now(), Number(previousGame.restartAt || 0) + 1);
-          if (gameType === "yahtzee") {
-            if (previousGame.mode === "2P") {
-              const nextGame = model.createYahtzeeMatch(previousGame.players);
-              nextGame.restartAt = restartAt;
-              nextGame.moveCount = previousGame.moveCount + 1;
-              await updateYahtzeeGame(nextGame);
-            } else {
-              state.gameState = model.createYahtzeeGame();
-              render();
-            }
-            return;
-          }
-          if (gameType === "tictactoe" || gameType === "dotsandboxes") {
-            const nextGame = gameType === "tictactoe"
-              ? model.createTicTacToeGame(previousGame.players)
-              : model.createDotsAndBoxesGame(previousGame.players);
-            nextGame.restartAt = restartAt;
-            state.gameState = nextGame;
-            render();
-            if (!localTicTacToe && !localDotsBoxes) {
-              try {
-                await publish(`${roomTopic()}/game`, nextGame);
-              } catch (error) {
-                if (state.gameState === nextGame) state.gameState = previousGame;
-                setBanner(`Could not restart the game: ${error.message}`, "error");
-                render();
-              }
-            }
-            return;
-          }
-          if (gameType === "1a2b") {
-            state.guesses = {};
-            state.results = {};
-            state.handledResults = new Set();
-            if (state.soloMode) {
-              state.soloSecret = model.createSecret();
-              state.gameState = { phase: "playing", turn: 1, activePlayerId: state.playerId };
-              render();
-              return;
-            }
-            const players = getPlayers();
-            const nextGame = {
-              phase: "playing",
-              turn: 1,
-              activePlayerId: players[0]?.id,
-              startedAt: Date.now(),
-              restartAt
-            };
-            state.gameState = nextGame;
-            render();
-            try {
-              await publish(`${roomTopic()}/game`, nextGame);
-            } catch (error) {
-              state.gameState = previousGame;
-              setBanner(`Could not restart the game: ${error.message}`, "error");
-              render();
-            }
-          }
+          yahtzeeController.roll();
         }
 
         function toggleYahtzeeDie(dieIndex) {
-          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
-          const nextGame = model.toggleYahtzeeDie(state.gameState, dieIndex);
-          updateYahtzeeGame(nextGame);
+          yahtzeeController.toggleDie(dieIndex);
         }
 
         function scoreYahtzeeCategory(categoryId) {
-          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
-          const nextGame = model.scoreYahtzeeTurn(state.gameState, categoryId);
-          updateYahtzeeGame(nextGame);
+          yahtzeeController.score(categoryId);
         }
 
         async function submitTicTacToeMove(cell) {
-          if (pendingTicTacToeMove) return;
-          const nextGame = model.applyTicTacToeMove(state.gameState, state.playerId, cell);
-          if (!nextGame) return;
-          const previousGame = state.gameState;
-          state.gameState = nextGame;
-          pendingTicTacToeMove = true;
-          render();
-          if (localTicTacToe) {
-            if (nextGame.phase === "playing") {
-              await new Promise((resolve) => window.setTimeout(resolve, 120));
-              if (!localTicTacToe || state.gameState !== nextGame) {
-                pendingTicTacToeMove = false;
-                return;
-              }
-              const aiCell = model.chooseTicTacToeMove(state.gameState, "computer");
-              const aiMove = model.applyTicTacToeMove(state.gameState, "computer", aiCell);
-              if (aiMove) state.gameState = aiMove;
-            }
-            pendingTicTacToeMove = false;
-            render();
+          await ticTacToeController.move(cell);
+        }
+
+        async function submitGuess(value) {
+          if (!a1b2Model.isValidCode(value)) {
+            setBanner("Use 4 different digits.", "error");
+            elements.guess.focus();
             return;
           }
+          if (state.soloMode) {
+            submitSoloGuess(value);
+            return;
+          }
+          if (!state.gameState || state.gameState.phase !== "playing" ||
+            state.gameState.activePlayerId !== state.playerId || state.guesses[state.gameState.turn]) return;
+          const turn = state.gameState.turn;
+          const guess = {
+            turn,
+            guess: value,
+            by: state.playerId,
+            to: getPlayers().find((player) => player.id !== state.playerId)?.id,
+            at: Date.now()
+          };
+          state.guesses[turn] = guess;
+          elements.guess.value = "";
+          render();
           try {
-            await publish(`${roomTopic()}/game`, nextGame);
+            await publish(`${roomTopic()}/moves/${turn}/guess`, guess);
           } catch (error) {
-            if (state.gameState === nextGame) state.gameState = previousGame;
-            elements.ticTacToeStatus.textContent = `Could not send your move: ${error.message}`;
-          } finally {
-            pendingTicTacToeMove = false;
+            delete state.guesses[turn];
+            setBanner(`Could not send your guess: ${error.message}`, "error");
             render();
           }
         }
 
         function submitSoloGuess(value) {
-          const turn = state.gameState.turn;
-          const { a, b } = model.scoreGuess(state.soloSecret, value);
-          state.guesses[turn] = { turn, guess: value, by: state.playerId, at: Date.now() };
-          state.results[turn] = { a, b };
+          a1b2Controller.submitSoloGuess(value);
           elements.guess.value = "";
-          if (a === 4) state.gameState = { ...state.gameState, phase: "won" };
-          else state.gameState = { ...state.gameState, turn: turn + 1 };
-          render();
         }
 
         async function answerGuess(turn, guess) {
-          if (!state.mySecret || !client?.connected || state.results[turn]) return;
-          const { a, b } = model.scoreGuess(state.mySecret, guess.guess);
-          try {
-            await publish(`${roomTopic()}/moves/${turn}/result`, { turn, a, b, by: state.playerId, for: guess.by, at: Date.now() });
-          } catch (error) {
-            setBanner(`Could not share the result: ${error.message}`, "error");
-          }
-        }
-
-        function processCurrentResult() {
-          if (!state.gameState || state.gameState.phase !== "playing") return;
-          const result = state.results[state.gameState.turn];
-          if (!result || state.handledResults.has(state.gameState.turn)) return;
-          state.handledResults.add(state.gameState.turn);
-          if (result.a === 4) {
-            state.gameState = { ...state.gameState, phase: "won", winnerId: result.for, turn: state.gameState.turn };
-          } else {
-            state.gameState = { ...state.gameState, turn: state.gameState.turn + 1, activePlayerId: result.by };
-          }
-          publish(`${roomTopic()}/game`, state.gameState).catch((error) => setBanner(`Could not update the game: ${error.message}`, "error"));
-          render();
+          if (!client?.connected) return;
+          await a1b2Controller.answerGuess(turn, guess);
         }
 
         elements.modeOne.addEventListener("click", () => setMode("1P"));
@@ -935,7 +861,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         elements.secretForm.addEventListener("submit", async (event) => {
           event.preventDefault();
           const value = elements.secret.value;
-          if (!model.isValidCode(value)) {
+          if (!a1b2Model.isValidCode(value)) {
             setBanner("Your secret must be four digits with no repeats.", "error");
             elements.secret.focus();
             return;
@@ -958,82 +884,46 @@ document.addEventListener("DOMContentLoaded", async () => {
             setBanner(`Could not mark you ready: ${error.message}`, "error");
           }
         });
-        elements.guessForm.addEventListener("submit", async (event) => {
-          event.preventDefault();
-          const value = elements.guess.value;
-          if (!model.isValidCode(value)) {
-            setBanner("Use 4 different digits.", "error");
-            elements.guess.focus();
-            return;
-          }
-          if (state.soloMode) {
-            submitSoloGuess(value);
-            return;
-          }
-          if (!state.gameState || state.gameState.phase !== "playing" || state.gameState.activePlayerId !== state.playerId || state.guesses[state.gameState.turn]) return;
-          const turn = state.gameState.turn;
-          const guess = { turn, guess: value, by: state.playerId, to: getPlayers().find((player) => player.id !== state.playerId)?.id, at: Date.now() };
-          state.guesses[turn] = guess;
-          elements.guess.value = "";
-          render();
-          try {
-            await publish(`${roomTopic()}/moves/${turn}/guess`, guess);
-          } catch (error) {
-            delete state.guesses[turn];
-            setBanner(`Could not send your guess: ${error.message}`, "error");
-            render();
-          }
-        });
         function updateGuessSlots() {
-          view.updateGuessSlots(state);
+          a1b2View.updateGuessSlots(state);
         }
-        elements.keypad.addEventListener("click", (event) => {
-          const button = event.target.closest("button");
-          if (!button || button.disabled) return;
-          const current = elements.guess.value;
-          if (button.dataset.digit && current.length < 4) {
-            elements.guess.value = `${current}${button.dataset.digit}`;
-          } else if (button.dataset.action === "clear") {
-            elements.guess.value = "";
-          } else if (button.dataset.action === "delete") {
-            elements.guess.value = current.slice(0, -1);
+        const unmountA1B2Handlers = a1b2View.mountHandlers({
+          onSubmit: submitGuess,
+          restart: elements.restart,
+          onRestart: () => a1b2Controller.restart(getPlayers(), state.soloMode),
+          onDigit: (digit) => {
+            if (elements.guess.value.length < 4) elements.guess.value += digit;
+            updateGuessSlots();
+          },
+          onClear: () => { elements.guess.value = ""; updateGuessSlots(); },
+          onBackspace: () => { elements.guess.value = elements.guess.value.slice(0, -1); updateGuessSlots(); },
+          onInput: () => {
+            elements.guess.value = elements.guess.value.replace(/\D/g, "").slice(0, 4);
+            updateGuessSlots();
           }
-          updateGuessSlots();
         });
-        elements.guess.addEventListener("input", () => {
-          elements.guess.value = elements.guess.value.replace(/\D/g, "").slice(0, 4);
-          updateGuessSlots();
+        const unmountTicTacToeHandlers = ticTacToeView.mountHandlers(
+          elements.ticTacToeBoard,
+          (cell) => submitTicTacToeMove(cell),
+          elements.ticTacToeRestart,
+          () => ticTacToeController.restart()
+        );
+        const unmountDotsHandlers = dotsAndBoxesView.mountHandlers(
+          elements.dotsBoard,
+          (edge) => submitDotsMove(edge),
+          elements.dotsRestart,
+          () => dotsAndBoxesController.restart()
+        );
+        const unmountYahtzeeHandlers = yahtzeeView.mountHandlers({
+          dice: elements.yahtzeeDice,
+          roll: elements.yahtzeeRoll,
+          scoreList: elements.yahtzeeScoreList,
+          restart: elements.yahtzeeRestart,
+          onToggleDie: toggleYahtzeeDie,
+          onRoll: rollYahtzeeDice,
+          onScore: scoreYahtzeeCategory,
+          onRestart: () => yahtzeeController.restart()
         });
-        elements.keypadSubmit.addEventListener("click", () => {
-          if (!elements.keypadSubmit.disabled) elements.guessForm.requestSubmit();
-        });
-        elements.ticTacToeBoard.addEventListener("click", (event) => {
-          const cell = event.target.closest("[data-cell]");
-          if (!cell || cell.disabled) return;
-          submitTicTacToeMove(Number(cell.dataset.cell));
-        });
-        elements.dotsBoard.addEventListener("click", (event) => {
-          const edge = event.target.closest("[data-edge]");
-          if (!edge || edge.disabled) return;
-          submitDotsMove(Number(edge.dataset.edge));
-        });
-        elements.yahtzeeDice.addEventListener("click", (event) => {
-          const die = event.target.closest("[data-die]");
-          if (!die || die.disabled) return;
-          toggleYahtzeeDie(Number(die.dataset.die));
-        });
-        elements.yahtzeeRoll.addEventListener("click", rollYahtzeeDice);
-        elements.yahtzeeScoreList.addEventListener("click", (event) => {
-          const category = event.target.closest("[data-category]");
-          if (!category || category.disabled) return;
-          scoreYahtzeeCategory(category.dataset.category);
-        });
-        elements.yahtzeeRestart.addEventListener("click", () => {
-          restartGame("yahtzee");
-        });
-        elements.restart.addEventListener("click", () => restartGame("1a2b"));
-        elements.ticTacToeRestart.addEventListener("click", () => restartGame("tictactoe"));
-        elements.dotsRestart.addEventListener("click", () => restartGame("dotsandboxes"));
         elements.roomWaitingCopy.addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(state.room);
@@ -1056,9 +946,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
           }
           client = null;
-          pendingTicTacToeMove = false;
           localTicTacToe = false;
-          pendingDotsMove = false;
           localDotsBoxes = false;
           model.resetGame();
           elements.setup.hidden = false;

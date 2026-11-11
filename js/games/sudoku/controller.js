@@ -12,6 +12,8 @@ export class SudokuController {
     onError = () => {},
     t = (source) => source,
     killer = false,
+    model = null,
+    view = null,
   } = {}) {
     if (!root) throw new TypeError("SudokuController requires a root element.");
     this.root = root;
@@ -22,8 +24,8 @@ export class SudokuController {
     this.onExit = onExit;
     this.onError = onError;
     this.t = t;
-    this.model = new SudokuModel({ killer });
-    this.view = new SudokuView(root, { t });
+    this.model = model || new SudokuModel({ killer });
+    this.view = view || new SudokuView(root, { t });
     this.unsubscribe = null;
     this.interval = null;
     this.started = false;
