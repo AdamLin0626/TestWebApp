@@ -1,7 +1,6 @@
 import { GameModel } from "./model.js";
 import { GameView } from "./view.js";
 import { initializeI18n } from "./i18n.js";
-import { SudokuController } from "./games/sudoku/controller.js";
 import { ChessController } from "./games/chess/controller.js";
 import { BattleshipController } from "./games/battleship/controller.js";
 import { A1B2Model } from "./games/1a2b/model.js";
@@ -69,7 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           standalonePlayerId = "";
           standaloneSubscriptions.clear();
           if (clearPending) pendingStandaloneMessages = [];
-          for (const root of [elements.sudokuGame, elements.chessGame, elements.battleshipGame]) {
+          for (const root of [elements.chessGame, elements.battleshipGame]) {
             root.replaceChildren();
             root.hidden = true;
           }
@@ -81,7 +80,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           localStorage.setItem("fourfold.name", state.playerName);
           disposeStandalone(false);
           const roots = {
-            sudoku: elements.sudokuGame,
             chess: elements.chessGame,
             battleship: elements.battleshipGame
           };
@@ -104,7 +102,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.ticTacToeGame.hidden = true;
           elements.dotsAndBoxesGame.hidden = true;
           elements.yahtzeeGame.hidden = true;
-          elements.sudokuGame.hidden = gameType !== "sudoku";
           elements.chessGame.hidden = gameType !== "chess";
           elements.battleshipGame.hidden = gameType !== "battleship";
           view.setGameHeader(gameType, mode);
@@ -139,11 +136,9 @@ document.addEventListener("DOMContentLoaded", async () => {
               elements.standaloneError.hidden = false;
             }
           };
-          standaloneController = gameType === "sudoku"
-            ? new SudokuController(options)
-            : gameType === "chess"
-              ? new ChessController(options)
-              : new BattleshipController(options);
+          standaloneController = gameType === "chess"
+            ? new ChessController(options)
+            : new BattleshipController(options);
           standaloneController.start();
           for (const data of pendingStandaloneMessages.splice(0)) {
             if (data.playerId === standalonePlayerId) continue;
@@ -490,7 +485,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
           }
           if (parts[0] === "game" && data?.game === state.gameType &&
-            ["sudoku", "chess", "battleship"].includes(state.gameType)) {
+            ["chess", "battleship"].includes(state.gameType)) {
             if (data.playerId === standalonePlayerId) return;
             if (standaloneSubscriptions.size) {
               const message = state.gameType === "chess" ? data.snapshot : data;
@@ -591,7 +586,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         function maybeStartGame() {
           if (!state.joined || state.gameState || getPlayers().length !== 2) return;
           const activePlayers = getPlayers();
-          if (["sudoku", "chess", "battleship"].includes(state.gameType)) {
+          if (["chess", "battleship"].includes(state.gameType)) {
             if (!standaloneController) startStandaloneGame(state.gameType, "2P");
             return;
           }
@@ -635,7 +630,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = true;
-            elements.sudokuGame.hidden = state.gameType !== "sudoku";
             elements.chessGame.hidden = state.gameType !== "chess";
             elements.battleshipGame.hidden = state.gameType !== "battleship";
             if (standaloneGameType === state.gameType) i18n.apply();
@@ -646,7 +640,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = false;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = true;
-            elements.sudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
             ticTacToeView.render(state, getPlayers, ticTacToeController.pending);
@@ -658,7 +651,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = false;
             elements.yahtzeeGame.hidden = true;
-            elements.sudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
             dotsAndBoxesView.render(state, getPlayers, dotsAndBoxesController.pending, localDotsBoxes);
@@ -670,7 +662,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = false;
-            elements.sudokuGame.hidden = true;
             elements.chessGame.hidden = true;
             elements.battleshipGame.hidden = true;
             yahtzeeView.render(state, yahtzeeModel, pendingYahtzeeMove);
@@ -681,7 +672,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.ticTacToeGame.hidden = true;
           elements.dotsAndBoxesGame.hidden = true;
           elements.yahtzeeGame.hidden = true;
-          elements.sudokuGame.hidden = true;
           elements.chessGame.hidden = true;
           elements.battleshipGame.hidden = true;
           a1b2View.render(state, getPlayers, () => a1b2Controller.processCurrentResult());
@@ -808,7 +798,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.lobby.hidden = false;
           elements.roomError.textContent = "";
         });
-        elements.sudokuTile.addEventListener("click", () => selectStandaloneGame("sudoku"));
         elements.chessTile.addEventListener("click", () => selectStandaloneGame("chess"));
         elements.battleshipTile.addEventListener("click", () => selectStandaloneGame("battleship"));
         elements.yahtzeeTile.addEventListener("click", startYahtzeeGame);

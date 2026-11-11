@@ -14,7 +14,7 @@
 - 架构应清楚、容易维护；指定的每款游戏各自拥有 Model、View、Controller，不应只建立空壳或 facade。
 - 每个 Game page 都需要 Restart / Exit，操作风格与 Yahtzee 一致。
 - 所有游戏页共用 Yahtzee 式标题框：Exit 在左、1P/2P 置中、Restart 在右；游戏标题与说明置中，分隔线以下为 Main Frame。
-- Killer Sudoku 已依用户要求删除；不应重新加入。
+- Sudoku（含 Killer Sudoku）已依用户要求删除；不应重新加入。
 - 不覆盖、回滚或重写与本次任务无关的既有工作；先检查 `git status` 和代码。
 
 ## 已提出的游戏需求
@@ -45,7 +45,6 @@
 - 游戏页有 Restart / Exit。
 
 ### 其他已在应用范围内的游戏
-- Sudoku：交互式 9×9、候选笔记、P1/P2 速度赛进度、数字键盘、计时。
 - Chess：交互式 8×8、极简 SVG 棋子、着法历史、回合提示、吃子区及合法着法验证；1P 对强电脑、2P 对战。
 - Battleship：部署时不能看到对手船位；部署使用拖动，点击可旋转；不能泄漏敌方船只位置；遵循 Yahtzee / Playroom 的 UI 风格。
 - 用户此前也要求这些 Game page 一致有 Restart / Exit。
@@ -67,7 +66,7 @@
 - `js/games/tictactoe/`
 - `js/games/dotsandboxes/`
 - `js/games/yahtzee/`
-- 以及既有的 `js/games/sudoku/`、`js/games/chess/`、`js/games/battleship/`
+- 以及既有的 `js/games/chess/`、`js/games/battleship/`
 
 文件存在不等于已完成独立 MVC。特别注意：
 

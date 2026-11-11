@@ -20,7 +20,6 @@ export class GameView {
       ticTacToeTile: $("#tic-tac-toe-tile"),
       dotsAndBoxesTile: $("#dots-and-boxes-tile"),
       yahtzeeTile: $("#yahtzee-tile"),
-      sudokuTile: $("#sudoku-tile"),
       chessTile: $("#chess-tile"),
       battleshipTile: $("#battleship-tile"),
       backHome: $("#back-home"),
@@ -70,7 +69,6 @@ export class GameView {
       dotsScores: $("#dots-scores"),
       dotsBoard: $("#dots-board"),
       yahtzeeGame: $("#yahtzee-game"),
-      sudokuGame: $("#sudoku-game"),
       chessGame: $("#chess-game"),
       battleshipGame: $("#battleship-game"),
       standaloneError: $("#standalone-error"),
@@ -110,7 +108,6 @@ export class GameView {
       tictactoe: "Tic Tac Toe",
       dotsandboxes: "點格棋",
       yahtzee: "快艇骰子",
-      sudoku: "Sudoku",
       chess: "Chess",
       battleship: "Battleship"
     };
@@ -119,7 +116,6 @@ export class GameView {
       tictactoe: "Make three in a row.",
       dotsandboxes: "Complete boxes by drawing their four sides.",
       yahtzee: "Roll, hold, and make every count.",
-      sudoku: "Fill every row, column, and box with 1–9.",
       chess: "Take turns making legal moves. Checkmate wins.",
       battleship: "Place your fleet and hunt your rival."
     };
@@ -128,7 +124,6 @@ export class GameView {
       tictactoe: "Tic Tac Toe game",
       dotsandboxes: "Dots and Boxes game",
       yahtzee: "Yahtzee game",
-      sudoku: "Sudoku game",
       chess: "Chess game",
       battleship: "Battleship game"
     };
@@ -146,7 +141,6 @@ export class GameView {
       tictactoe: "TIC TAC TOE",
       dotsandboxes: "DOTS AND BOXES",
       yahtzee: "YAHTZEE",
-      sudoku: "SUDOKU",
       chess: "CHESS",
       battleship: "BATTLESHIP"
     };
@@ -159,9 +153,7 @@ export class GameView {
         ? "Create a room or join a friend to play 點格棋."
         : gameType === "yahtzee"
           ? "Take turns rolling and scoring with a friend."
-          : gameType === "sudoku"
-            ? "Race your friend to complete the Sudoku grid."
-            : gameType === "chess"
+          : gameType === "chess"
               ? "Play a full game of chess with a friend."
               : gameType === "battleship"
                 ? "Place your fleet and take turns finding each other’s ships."
@@ -172,14 +164,12 @@ export class GameView {
         ? "Take turns drawing lines. Complete a box to score and keep your turn."
         : gameType === "yahtzee"
           ? "Take turns rolling five dice and filling your own scorecard. The higher final score wins."
-          : gameType === "sudoku"
-            ? "Race to complete the same grid. The first player to solve it wins."
-            : gameType === "chess"
+          : gameType === "chess"
               ? "Take turns making legal moves. Checkmate wins."
               : gameType === "battleship"
                 ? "Place a standard fleet on a 10 × 10 board, then take turns firing."
                 : "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.";
-    this.elements.roomCreateButton.textContent = ["tictactoe", "dotsandboxes", "yahtzee", "sudoku",
+    this.elements.roomCreateButton.textContent = ["tictactoe", "dotsandboxes", "yahtzee",
       "chess", "battleship"].includes(gameType)
       ? "Create game room →"
       : "Create room →";
