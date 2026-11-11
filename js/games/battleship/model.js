@@ -103,7 +103,7 @@ export class BattleshipModel {
     ship.coordinates = coordinates;
     ship.orientation = orientation;
     ship.sunk = false;
-    this.state.players[playerId].ready = this._isFleetPlaced(playerId);
+    this.state.players[playerId].ready = false;
     return true;
   }
 
@@ -115,6 +115,7 @@ export class BattleshipModel {
   autoPlace(playerId = this.state.placementPlayerId) {
     if (this.state.phase !== 'setup' || !PLAYER_IDS.includes(playerId)) return false;
     const ships = this.state.players[playerId].ships;
+    this.state.players[playerId].ready = false;
     for (const ship of ships) {
       ship.coordinates = [];
       ship.sunk = false;
@@ -138,7 +139,13 @@ export class BattleshipModel {
         return false;
       }
     }
-    this.state.players[playerId].ready = true;
+    return this._isFleetPlaced(playerId);
+  }
+
+  setPlayerReady(playerId, ready = true) {
+    if (!PLAYER_IDS.includes(playerId) || this.state.phase !== 'setup') return false;
+    if (ready && !this._isFleetPlaced(playerId)) return false;
+    this.state.players[playerId].ready = Boolean(ready);
     return true;
   }
 
@@ -146,7 +153,7 @@ export class BattleshipModel {
     if (this.state.phase !== 'setup') return false;
     if (this.state.mode === '1P') {
       if (!this._isFleetPlaced('p1') || !this._isFleetPlaced('p2')) return false;
-    } else if (!this._isFleetPlaced(this.state.playerId)) {
+    } else if (!this._isFleetPlaced(this.state.playerId) || !this.state.players[this.state.playerId].ready) {
       return false;
     }
     this.state.phase = 'playing';

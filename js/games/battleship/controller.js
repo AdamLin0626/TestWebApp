@@ -50,8 +50,17 @@ export class BattleshipController {
     if (this.disposed || this.mode !== '2P' || !message || message.game !== 'battleship') return false;
     if (!PLAYER_IDS.includes(message.playerId) || message.playerId === this.playerId) return false;
     if (message.kind === 'ready') {
+      if (this.model.state.phase !== 'setup') return false;
       this.readyPlayers.add(message.playerId);
+      this.model.state.players[message.playerId].ready = true;
       this._startIfReady();
+      this.render();
+      return true;
+    }
+    if (message.kind === 'unready') {
+      if (this.model.state.phase !== 'setup') return false;
+      this.readyPlayers.delete(message.playerId);
+      this.model.state.players[message.playerId].ready = false;
       this.render();
       return true;
     }
@@ -64,6 +73,7 @@ export class BattleshipController {
     }
     if (message.kind === 'start') {
       this.readyPlayers.add(message.playerId);
+      this.model.state.players[message.playerId].ready = true;
       this._startIfReady();
       return true;
     }
@@ -114,8 +124,12 @@ export class BattleshipController {
         this.render();
         break;
       case 'auto-place':
+        this._markUnready();
         this.model.autoPlace(this.playerId);
-        if (this.mode === '2P' && this._fleetReady()) this._markReady();
+        this.render();
+        break;
+      case 'ready':
+        this._markReady();
         this.render();
         break;
       case 'start':
@@ -149,7 +163,7 @@ export class BattleshipController {
         this.model.state.orientation,
         this.playerId,
       );
-      if (placed && this.mode === '2P' && this._fleetReady()) this._markReady();
+      if (placed) this._markUnready();
       this.render();
       return;
     }
@@ -175,17 +189,24 @@ export class BattleshipController {
   _startSolo() {
     if (this.mode !== '1P' || this.model.state.phase !== 'setup') return;
     if (!this._fleetReady()) return;
-    this.model.state.players.p1.ready = true;
+    this.model.setPlayerReady('p1', true);
     this.model.autoPlace('p2');
     if (this.model.startGame()) this.render();
   }
 
   _markReady() {
-    if (!this._fleetReady()) return;
+    if (this.mode !== '2P' || this.model.state.phase !== 'setup' || !this._fleetReady()) return;
     if (this.readyPlayers.has(this.playerId)) return;
+    this.model.setPlayerReady(this.playerId, true);
     this.readyPlayers.add(this.playerId);
     this._publish({ kind: 'ready', playerId: this.playerId });
     this._startIfReady();
+  }
+
+  _markUnready() {
+    this.model.setPlayerReady(this.playerId, false);
+    if (this.mode !== '2P' || !this.readyPlayers.delete(this.playerId)) return;
+    this._publish({ kind: 'unready', playerId: this.playerId });
   }
 
   _startIfReady() {
@@ -226,12 +247,6 @@ export class BattleshipController {
   }
 
   render() {
-    // Keep readiness in sync with the fleet, including placements restored or
-    // completed through any path that does not pass through the usual action handler.
-    if (this.mode === '2P' && this.model.state.phase === 'setup' && this._fleetReady()) {
-      this.model.state.players[this.playerId].ready = true;
-      this._markReady();
-    }
     this.view.render(this.model.getSnapshot({ privateFor: this.playerId }), this.playerId);
   }
 }
