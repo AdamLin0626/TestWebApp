@@ -20,6 +20,10 @@ export class GameView {
       ticTacToeTile: $("#tic-tac-toe-tile"),
       dotsAndBoxesTile: $("#dots-and-boxes-tile"),
       yahtzeeTile: $("#yahtzee-tile"),
+      sudokuTile: $("#sudoku-tile"),
+      killerSudokuTile: $("#killer-sudoku-tile"),
+      chessTile: $("#chess-tile"),
+      battleshipTile: $("#battleship-tile"),
       backHome: $("#back-home"),
       roomError: $("#room-error"),
       roomKicker: $("#room-kicker"),
@@ -72,6 +76,11 @@ export class GameView {
       dotsScores: $("#dots-scores"),
       dotsBoard: $("#dots-board"),
       yahtzeeGame: $("#yahtzee-game"),
+      sudokuGame: $("#sudoku-game"),
+      killerSudokuGame: $("#killer-sudoku-game"),
+      chessGame: $("#chess-game"),
+      battleshipGame: $("#battleship-game"),
+      standaloneError: $("#standalone-error"),
       yahtzeeExit: $("#yahtzee-exit"),
       yahtzeeRestart: $("#yahtzee-restart"),
       yahtzeeDice: $("#yahtzee-dice"),
@@ -82,7 +91,13 @@ export class GameView {
       yahtzeeTotal: $("#yahtzee-total"),
       yahtzeeRound: $("#yahtzee-round"),
       yahtzeeScoreList: $("#yahtzee-score-list"),
-      yahtzeeScorecardFooter: $("#yahtzee-scorecard-footer")
+      yahtzeeScorecardFooter: $("#yahtzee-scorecard-footer"),
+      yahtzeeMatchScores: $("#yahtzee-match-scores"),
+      yahtzeeModeBadge: $("#yahtzee-mode-badge"),
+      yahtzeeRestart: $("#yahtzee-restart"),
+      ticTacToeRestart: $("#tic-tac-toe-restart"),
+      dotsRestart: $("#dots-game-restart"),
+      restart: $("#game-restart")
     };
   }
 
@@ -105,19 +120,46 @@ export class GameView {
   setGameType(gameType) {
     const isTicTacToe = gameType === "tictactoe";
     const isDotsAndBoxes = gameType === "dotsandboxes";
-    const title = isTicTacToe ? "TIC TAC TOE" : isDotsAndBoxes ? "DOTS AND BOXES" : "1A2B";
+    const titles = {
+      "1a2b": "1A2B",
+      tictactoe: "TIC TAC TOE",
+      dotsandboxes: "DOTS AND BOXES",
+      yahtzee: "YAHTZEE",
+      sudoku: "SUDOKU",
+      killersudoku: "KILLER SUDOKU",
+      chess: "CHESS",
+      battleship: "BATTLESHIP"
+    };
+    const title = titles[gameType] || "1A2B";
     this.elements.roomKicker.textContent = `${title} / TWO PLAYERS`;
     this.elements.roomDescription.textContent = isTicTacToe
       ? "Create a room or join a friend for a moving 3×3 game."
       : isDotsAndBoxes
         ? "Create a room or join a friend to play 點格棋."
-        : "Create a private room or join a friend’s game.";
+        : gameType === "yahtzee"
+          ? "Take turns rolling and scoring with a friend."
+          : ["sudoku", "killersudoku"].includes(gameType)
+            ? "Race your friend to complete the Sudoku grid."
+            : gameType === "chess"
+              ? "Play a full game of chess with a friend."
+              : gameType === "battleship"
+                ? "Place your fleet and take turns finding each other’s ships."
+                : "Create a private room or join a friend’s game.";
     this.elements.roomCreateDescription.textContent = isTicTacToe
       ? "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed."
       : isDotsAndBoxes
         ? "Take turns drawing lines. Complete a box to score and keep your turn."
-        : "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.";
-    this.elements.roomCreateButton.textContent = isTicTacToe || isDotsAndBoxes
+        : gameType === "yahtzee"
+          ? "Take turns rolling five dice and filling your own scorecard. The higher final score wins."
+          : ["sudoku", "killersudoku"].includes(gameType)
+            ? "Race to complete the same grid. The first player to solve it wins."
+            : gameType === "chess"
+              ? "Take turns making legal moves. Checkmate wins."
+              : gameType === "battleship"
+                ? "Place a standard fleet on a 10 × 10 board, then take turns firing."
+                : "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.";
+    this.elements.roomCreateButton.textContent = ["tictactoe", "dotsandboxes", "yahtzee", "sudoku",
+      "killersudoku", "chess", "battleship"].includes(gameType)
       ? "Create game room →"
       : "Create room →";
   }
@@ -253,23 +295,81 @@ export class GameView {
     return button;
   }
 
-  renderYahtzee(state, model) {
+  renderYahtzee(state, model, pendingMove = false) {
     const game = state.gameState;
+    if (!game) {
+      this.elements.yahtzeeModeBadge.textContent = "2P · Friends";
+      this.elements.yahtzeeHint.textContent = "Waiting for your friend to join.";
+      this.elements.yahtzeeRoll.disabled = true;
+      this.elements.yahtzeeRestart.disabled = true;
+      this.elements.yahtzeeDice.replaceChildren();
+      this.elements.yahtzeeScoreList.replaceChildren();
+      this.elements.yahtzeeMatchScores.replaceChildren();
+      this.elements.yahtzeeMatchScores.hidden = true;
+      return;
+    }
     const categories = model.getYahtzeeCategories();
+    const multiPlayer = game.mode === "2P";
+    const displayedPlayerId = multiPlayer
+      ? game.activePlayerId || state.playerId
+      : null;
+    const card = multiPlayer ? game.scorecards[displayedPlayerId] : game;
+    const isMyTurn = !multiPlayer || game.activePlayerId === state.playerId;
     const hasRolled = game.dice.some(Boolean);
     const heldCount = game.held.filter(Boolean).length;
-    this.elements.yahtzeeTotal.textContent = String(game.totalScore || 0);
-    this.elements.yahtzeeRound.textContent = `${String(Math.min(game.round, 13)).padStart(2, "0")} of 13`;
+    this.elements.yahtzeeTotal.textContent = String(card?.totalScore || 0);
+    this.elements.yahtzeeRound.textContent = this.translate("{round} of 13", {
+      round: String(Math.min(game.round, 13)).padStart(2, "0")
+    });
+    this.elements.yahtzeeModeBadge.textContent = multiPlayer ? "2P · Friends" : "1P · Solo";
+    this.elements.yahtzeeMatchScores.hidden = !multiPlayer;
+    if (multiPlayer) {
+      this.elements.yahtzeeMatchScores.replaceChildren(...game.players.map((player) => {
+        const score = this.document.createElement("span");
+        score.className = "yahtzee-player-score";
+        score.classList.toggle("is-turn", player.id === game.activePlayerId && game.phase === "playing");
+        const name = this.document.createElement("strong");
+        name.textContent = player.id === state.playerId ? `${player.name} (you)` : player.name;
+        const total = this.document.createElement("b");
+        total.textContent = String(game.scorecards[player.id].totalScore);
+        score.append(name, total);
+        return score;
+      }));
+    } else {
+      this.elements.yahtzeeMatchScores.replaceChildren();
+    }
     this.elements.yahtzeeRollLabel.textContent = hasRolled
-      ? `ROLL ${3 - game.rollsRemaining} OF 3`
-      : "READY TO ROLL";
+      ? this.translate("ROLL {roll} OF 3", { roll: 3 - game.rollsRemaining })
+      : this.translate("READY TO ROLL");
     this.elements.yahtzeeRoll.textContent = game.phase === "won"
-      ? "Game complete"
-      : game.rollsRemaining === 3 ? "Roll dice · 3 left" : `Roll again · ${game.rollsRemaining} left`;
-    this.elements.yahtzeeRoll.disabled = game.phase !== "playing" || game.rollsRemaining === 0;
+      ? multiPlayer
+        ? game.winnerId
+          ? this.translate("{name} wins", { name: game.players.find(({ id }) => id === game.winnerId)?.name })
+          : this.translate("It’s a tie")
+        : this.translate("Game complete")
+      : multiPlayer && !isMyTurn
+        ? this.translate("Waiting for your turn")
+        : game.rollsRemaining === 3
+          ? this.translate("Roll dice · 3 left")
+          : this.translate("Roll again · {count} left", { count: game.rollsRemaining });
+    this.elements.yahtzeeRoll.disabled = game.phase !== "playing" || game.rollsRemaining === 0 ||
+      !isMyTurn || pendingMove;
     this.elements.yahtzeeHeldCount.textContent = `${heldCount} held`;
     this.elements.yahtzeeHint.textContent = game.phase === "won"
-      ? `Game complete — you scored ${game.totalScore} points.`
+      ? multiPlayer
+        ? game.winnerId
+          ? this.translate("{name} wins with {score} points.", {
+            name: game.players.find(({ id }) => id === game.winnerId)?.name,
+            score: game.scorecards[game.winnerId].totalScore
+          })
+          : this.translate("Both players finished with {score} points.", {
+            score: game.scorecards[game.players[0].id].totalScore
+          })
+        : `Game complete — you scored ${game.totalScore} points.`
+      : multiPlayer && !isMyTurn
+        ? this.translate("{name} is playing.", {
+          name: game.players.find(({ id }) => id === game.activePlayerId)?.name || this.translate("Your opponent")
+        })
       : !hasRolled
         ? "Tap Roll to start your turn."
         : game.rollsRemaining > 0
@@ -295,7 +395,8 @@ export class GameView {
         ? `Die ${index + 1}: ${die}${game.held[index] ? ", held" : ""}`
         : `Die ${index + 1}: not rolled`);
       button.setAttribute("aria-pressed", String(game.held[index]));
-      button.disabled = !die || game.rollsRemaining === 0 || game.phase !== "playing";
+      button.disabled = !die || game.rollsRemaining === 0 || game.phase !== "playing" ||
+        !isMyTurn || pendingMove;
       for (let slot = 1; slot <= 9; slot++) {
         const pip = this.document.createElement("span");
         pip.className = "die-pip";
@@ -306,14 +407,15 @@ export class GameView {
     }));
 
     this.elements.yahtzeeScoreList.replaceChildren(...categories.map((category) => {
-      const score = game.categories[category.id];
+      const score = card?.categories[category.id];
       const button = this.document.createElement("button");
       button.type = "button";
       button.className = "yahtzee-score-row";
       button.dataset.category = category.id;
       button.classList.toggle("is-scored", score !== null);
       const preview = score === null ? model.getYahtzeeTurnScore(game, category.id) : score;
-      button.disabled = game.phase !== "playing" || preview === null || score !== null;
+      button.disabled = game.phase !== "playing" || !isMyTurn || pendingMove ||
+        preview === null || score !== null;
       const label = this.document.createElement("span");
       label.textContent = this.translate(category.label);
       const value = this.document.createElement("strong");
@@ -323,18 +425,19 @@ export class GameView {
       button.append(label, value);
       return button;
     }));
-    const categoriesLeft = 13 - Object.values(game.categories).filter((value) => value !== null).length;
+    const categoriesLeft = 13 - Object.values(card?.categories || {}).filter((value) => value !== null).length;
     this.elements.yahtzeeScorecardFooter.textContent = this.translate(
       "Upper {score} / 63{bonus}{yahtzee} · {count} categories left",
       {
-        score: game.upperScore || 0,
-        bonus: game.upperBonus ? this.translate("· +35 bonus") : "",
-        yahtzee: game.yahtzeeBonus
-          ? this.translate("· Yahtzee +{score}", { score: game.yahtzeeBonus })
+        score: card?.upperScore || 0,
+        bonus: card?.upperBonus ? this.translate("· +35 bonus") : "",
+        yahtzee: card?.yahtzeeBonus
+          ? this.translate("· Yahtzee +{score}", { score: card.yahtzeeBonus })
           : "",
         count: categoriesLeft
       }
     );
+    this.elements.yahtzeeRestart.disabled = pendingMove;
   }
 
   renderPlayers(state, getPlayers) {

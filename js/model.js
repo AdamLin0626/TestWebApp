@@ -441,6 +441,26 @@ export class GameModel {
     };
   }
 
+  createYahtzeeMatch(players) {
+    if (!Array.isArray(players) || players.length !== 2 ||
+      players.some((player) => !player?.id || !player.name)) return null;
+    const game = this.createYahtzeeGame();
+    return {
+      ...game,
+      players: players.map((player) => ({ id: player.id, name: player.name })),
+      scorecards: Object.fromEntries(players.map((player) => [player.id, {
+        categories: Object.fromEntries(YAHTZEE_CATEGORIES.map(({ id }) => [id, null])),
+        yahtzeeBonus: 0,
+        upperScore: 0,
+        upperBonus: 0,
+        totalScore: 0
+      }])),
+      activePlayerId: players[0]?.id || null,
+      mode: "2P",
+      moveCount: 0
+    };
+  }
+
   getYahtzeeCategories() {
     return YAHTZEE_CATEGORIES;
   }
@@ -454,6 +474,7 @@ export class GameModel {
       ...game,
       dice,
       rollsRemaining: game.rollsRemaining - 1,
+      moveCount: game.mode === "2P" ? (game.moveCount || 0) + 1 : game.moveCount,
       updatedAt: Date.now()
     };
   }
@@ -464,7 +485,12 @@ export class GameModel {
       !game.dice[dieIndex]) return null;
     const held = [...game.held];
     held[dieIndex] = !held[dieIndex];
-    return { ...game, held, updatedAt: Date.now() };
+    return {
+      ...game,
+      held,
+      moveCount: game.mode === "2P" ? (game.moveCount || 0) + 1 : game.moveCount,
+      updatedAt: Date.now()
+    };
   }
 
   scoreYahtzeeCategory(dice, categoryId) {
@@ -508,21 +534,22 @@ export class GameModel {
   }
 
   getYahtzeeTurnScore(game, categoryId) {
-    if (!game || game.phase !== "playing" || game.dice.some((die) => !die) ||
-      !Object.hasOwn(game.categories, categoryId) || game.categories[categoryId] !== null) return null;
+    const card = game?.mode === "2P" ? game.scorecards?.[game.activePlayerId] : game;
+    if (!game || !card || game.phase !== "playing" || game.dice.some((die) => !die) ||
+      !Object.hasOwn(card.categories, categoryId) || card.categories[categoryId] !== null) return null;
 
     const category = YAHTZEE_CATEGORIES.find(({ id }) => id === categoryId);
     const isYahtzee = game.dice.every((die) => die === game.dice[0]);
-    const hasJoker = isYahtzee && game.categories.yahtzee === 50;
+    const hasJoker = isYahtzee && card.categories.yahtzee === 50;
     if (!hasJoker) return this.scoreYahtzeeCategory(game.dice, categoryId);
 
     const forcedUpperCategory = ["ones", "twos", "threes", "fours", "fives", "sixes"][game.dice[0] - 1];
-    if (game.categories[forcedUpperCategory] === null) {
+    if (card.categories[forcedUpperCategory] === null) {
       return categoryId === forcedUpperCategory ? game.dice[0] * 5 : null;
     }
 
     const hasOpenLowerCategory = YAHTZEE_CATEGORIES.some(({ id, section }) =>
-      section === "lower" && game.categories[id] === null
+      section === "lower" && card.categories[id] === null
     );
     if (category.section === "upper") return hasOpenLowerCategory ? null : 0;
     if (categoryId === "fullHouse") return 25;
@@ -534,20 +561,54 @@ export class GameModel {
   scoreYahtzeeTurn(game, categoryId) {
     const score = this.getYahtzeeTurnScore(game, categoryId);
     if (score === null) return null;
-    const isBonusYahtzee = game.dice.every((die) => die === game.dice[0]) && game.categories.yahtzee === 50;
-    const categories = { ...game.categories, [categoryId]: score };
+    const multiPlayer = game.mode === "2P";
+    const card = multiPlayer ? game.scorecards[game.activePlayerId] : game;
+    const isBonusYahtzee = game.dice.every((die) => die === game.dice[0]) && card.categories.yahtzee === 50;
+    const categories = { ...card.categories, [categoryId]: score };
     const round = Object.values(categories).filter((value) => value !== null).length + 1;
-    const complete = round > YAHTZEE_CATEGORIES.length;
+    const cardComplete = round > YAHTZEE_CATEGORIES.length;
     const upperScore = YAHTZEE_CATEGORIES
       .filter(({ section }) => section === "upper")
       .reduce((sum, { id }) => sum + (categories[id] || 0), 0);
     const upperBonus = upperScore >= 63 ? 35 : 0;
-    const yahtzeeBonus = (game.yahtzeeBonus || 0) + (isBonusYahtzee ? 100 : 0);
+    const yahtzeeBonus = (card.yahtzeeBonus || 0) + (isBonusYahtzee ? 100 : 0);
     const totalScore = Object.values(categories).reduce((sum, value) => sum + (value || 0), 0) +
       upperBonus + yahtzeeBonus;
+    if (multiPlayer) {
+      const scorecards = {
+        ...game.scorecards,
+        [game.activePlayerId]: { categories, upperScore, upperBonus, yahtzeeBonus, totalScore }
+      };
+      const matchComplete = Object.values(scorecards).every((scorecard) =>
+        Object.values(scorecard.categories).every((value) => value !== null)
+      );
+      const firstTotal = scorecards[game.players[0].id].totalScore;
+      const secondTotal = scorecards[game.players[1].id].totalScore;
+      const nextPlayer = game.players.find((player) => player.id !== game.activePlayerId);
+      const activePlayerId = matchComplete ? null : nextPlayer.id;
+      const nextRound = matchComplete
+        ? YAHTZEE_CATEGORIES.length
+        : Object.values(scorecards[activePlayerId].categories).filter((value) => value !== null).length + 1;
+      return {
+        ...game,
+        phase: matchComplete ? "won" : "playing",
+        round: nextRound,
+        dice: Array(5).fill(0),
+        held: Array(5).fill(false),
+        rollsRemaining: 3,
+        scorecards,
+        activePlayerId,
+        winnerId: matchComplete
+          ? firstTotal === secondTotal ? null : firstTotal > secondTotal ? game.players[0].id : game.players[1].id
+          : null,
+        moveCount: (game.moveCount || 0) + 1,
+        startedAt: game.startedAt,
+        updatedAt: Date.now()
+      };
+    }
     return {
       ...game,
-      phase: complete ? "won" : "playing",
+      phase: cardComplete ? "won" : "playing",
       round,
       dice: Array(5).fill(0),
       held: Array(5).fill(false),

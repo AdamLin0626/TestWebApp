@@ -15,14 +15,14 @@ export async function initializeI18n(documentRef = document, navigatorRef = navi
 
   const loadMessages = async (targetLocale) => {
     try {
-      const response = await fetch(new URL(`../locales/${targetLocale}.json`, import.meta.url));
+      const response = await fetch(new URL(`../Lanuage/${targetLocale}.json`, import.meta.url));
       if (!response.ok) throw new Error(`Could not load ${targetLocale} translations (${response.status}).`);
       messages = (await response.json()).messages;
       locale = targetLocale;
     } catch (error) {
       console.error(error);
       if (targetLocale === "en") throw error;
-      const response = await fetch(new URL("../locales/en.json", import.meta.url));
+      const response = await fetch(new URL("../Lanuage/en.json", import.meta.url));
       if (!response.ok) throw new Error(`Could not load fallback translations (${response.status}).`);
       messages = (await response.json()).messages;
       locale = "en";

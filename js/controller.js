@@ -1,6 +1,9 @@
 import { GameModel } from "./model.js";
 import { GameView } from "./view.js";
 import { initializeI18n } from "./i18n.js";
+import { SudokuController } from "./games/sudoku/controller.js";
+import { ChessController } from "./games/chess/controller.js";
+import { BattleshipController } from "./games/battleship/controller.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
       const i18n = await initializeI18n();
@@ -15,6 +18,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         let localTicTacToe = false;
         let pendingDotsMove = false;
         let localDotsBoxes = false;
+        let pendingYahtzeeMove = false;
+        let isRoomHost = false;
+        let standaloneController = null;
+        let standaloneGameType = "";
+        let standalonePlayerId = "";
+        let standaloneSubscriptions = new Set();
+        let pendingStandaloneMessages = [];
 
         const roomTopic = () => model.roomTopic();
         const playerTopic = (id) => model.playerTopic(id);
@@ -28,6 +38,115 @@ document.addEventListener("DOMContentLoaded", async () => {
         function setMode(nextMode) {
           state.mode = nextMode;
           view.setMode(state.mode);
+        }
+
+        function disposeStandalone(clearPending = true) {
+          standaloneController?.dispose?.();
+          standaloneController = null;
+          standaloneGameType = "";
+          standalonePlayerId = "";
+          standaloneSubscriptions.clear();
+          if (clearPending) pendingStandaloneMessages = [];
+          for (const root of [elements.sudokuGame, elements.killerSudokuGame, elements.chessGame, elements.battleshipGame]) {
+            root.replaceChildren();
+            root.hidden = true;
+          }
+        }
+
+        function startStandaloneGame(gameType, mode = state.mode) {
+          state.playerName = model.validName(elements.name.value) || "Player";
+          elements.name.value = state.playerName;
+          localStorage.setItem("fourfold.name", state.playerName);
+          disposeStandalone(false);
+          const roots = {
+            sudoku: elements.sudokuGame,
+            killersudoku: elements.killerSudokuGame,
+            chess: elements.chessGame,
+            battleship: elements.battleshipGame
+          };
+          const root = roots[gameType];
+          if (!root) throw new RangeError(`Unknown standalone game: ${gameType}`);
+          standaloneGameType = gameType;
+          root.hidden = false;
+          state.gameType = gameType;
+          state.mode = mode;
+          state.soloMode = false;
+          state.room = mode === "1P" ? "" : state.room;
+          elements.setup.hidden = true;
+          elements.lobby.hidden = true;
+          elements.page.classList.add("is-playing");
+          elements.game.hidden = false;
+          elements.standaloneError.hidden = true;
+          elements.game.dataset.mode = mode;
+          elements.game.dataset.game = gameType;
+          elements.roomHeading.hidden = true;
+          elements.gameGrid.hidden = true;
+          elements.ticTacToeGame.hidden = true;
+          elements.dotsAndBoxesGame.hidden = true;
+          elements.yahtzeeGame.hidden = true;
+          elements.sudokuGame.hidden = gameType !== "sudoku";
+          elements.killerSudokuGame.hidden = gameType !== "killersudoku";
+          elements.chessGame.hidden = gameType !== "chess";
+          elements.battleshipGame.hidden = gameType !== "battleship";
+          const players = getPlayers();
+          const localSeat = mode === "1P" || players[0]?.id === state.playerId ? "p1" : "p2";
+          standalonePlayerId = localSeat;
+          const transport = mode === "2P" ? {
+            subscribe(listener) {
+              standaloneSubscriptions.add(listener);
+              return () => standaloneSubscriptions.delete(listener);
+            },
+            publish(message) {
+              const payload = gameType === "battleship"
+                ? message
+                : gameType === "chess"
+                  ? { game: gameType, playerId: localSeat, snapshot: message }
+                  : { game: gameType, ...message };
+              return publish(`${roomTopic()}/game`, payload, gameType !== "battleship");
+            }
+          } : null;
+          const options = {
+            root,
+            mode,
+            playerId: localSeat,
+            playerName: state.playerName,
+            transport,
+            onExit: returnHome,
+            t: i18n.t,
+            onError: (error) => {
+              elements.standaloneError.textContent = i18n.t("Could not update the game: {error}", {
+                error: error.message
+              });
+              elements.standaloneError.hidden = false;
+            }
+          };
+          standaloneController = gameType === "sudoku" || gameType === "killersudoku"
+            ? new SudokuController({ ...options, killer: gameType === "killersudoku" })
+            : gameType === "chess"
+              ? new ChessController(options)
+              : new BattleshipController(options);
+          standaloneController.start();
+          for (const data of pendingStandaloneMessages.splice(0)) {
+            if (data.playerId === standalonePlayerId) continue;
+            const message = gameType === "chess" ? data.snapshot : data;
+            for (const listener of standaloneSubscriptions) listener(message);
+          }
+          i18n.apply();
+        }
+
+        function selectStandaloneGame(gameType) {
+          state.gameType = gameType;
+          localTicTacToe = false;
+          localDotsBoxes = false;
+          if (state.mode === "1P") {
+            startStandaloneGame(gameType, "1P");
+            return;
+          }
+          view.setGameType(gameType);
+          elements.roomActions.hidden = false;
+          elements.roomWaiting.hidden = true;
+          elements.lobby.hidden = false;
+          elements.roomError.textContent = "";
         }
 
         async function submitDotsMove(edge) {
@@ -83,6 +202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.setup.hidden = true;
           elements.lobby.hidden = true;
           elements.game.hidden = false;
+          elements.standaloneError.hidden = true;
           elements.game.dataset.mode = "1P";
           elements.game.dataset.game = "1a2b";
           elements.game.setAttribute("aria-label", "1A2B game");
@@ -131,6 +251,14 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.name.value = state.playerName;
           localStorage.setItem("fourfold.name", state.playerName);
           state.gameType = "yahtzee";
+          view.setGameType(state.gameType);
+          if (state.mode === "2P") {
+            elements.roomActions.hidden = false;
+            elements.roomWaiting.hidden = true;
+            elements.lobby.hidden = false;
+            elements.roomError.textContent = "";
+            return;
+          }
           state.room = "";
           state.playerId = "solo";
           state.players = { solo: { id: "solo", name: state.playerName, online: true } };
@@ -138,6 +266,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           state.joined = false;
           state.soloMode = false;
           localDotsBoxes = false;
+          pendingYahtzeeMove = false;
+          isRoomHost = false;
           localTicTacToe = false;
           elements.setup.hidden = true;
           elements.lobby.hidden = true;
@@ -303,16 +433,19 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.roomWaitingCode.textContent = state.room;
             elements.lobby.hidden = false;
             elements.game.hidden = true;
+            elements.standaloneError.hidden = true;
             state.soloMode = false;
             elements.game.dataset.mode = "2P";
             elements.game.dataset.game = state.gameType;
             const isBoardGame = state.gameType !== "1a2b";
             elements.game.setAttribute("aria-label", state.gameType === "tictactoe"
               ? "Tic Tac Toe game"
-              : state.gameType === "dotsandboxes" ? "Dots and Boxes game" : "1A2B game");
+              : state.gameType === "dotsandboxes" ? "Dots and Boxes game"
+                : state.gameType === "yahtzee" ? "Yahtzee game" : "1A2B game");
             elements.gameTitle.textContent = state.gameType === "tictactoe"
               ? "Tic Tac Toe"
-              : state.gameType === "dotsandboxes" ? "點格棋" : "1A2B";
+              : state.gameType === "dotsandboxes" ? "點格棋"
+                : state.gameType === "yahtzee" ? "快艇骰子" : "1A2B";
             elements.modeBadge.textContent = "2P · Friends";
             elements.playersCard.hidden = isBoardGame;
             elements.secretCard.hidden = state.gameType !== "1a2b";
@@ -354,9 +487,29 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (state.gameType !== "1a2b") render();
             return;
           }
+          if (parts[0] === "game" && data?.game === state.gameType &&
+            ["sudoku", "killersudoku", "chess", "battleship"].includes(state.gameType)) {
+            if (data.playerId === standalonePlayerId) return;
+            if (standaloneSubscriptions.size) {
+              const message = state.gameType === "chess" ? data.snapshot : data;
+              for (const listener of standaloneSubscriptions) listener(message);
+            } else {
+              pendingStandaloneMessages = [data];
+            }
+            return;
+          }
           if (parts[0] === "game" && data && typeof data.turn === "number") {
-            if (!state.gameState || data.turn > state.gameState.turn ||
-              (data.turn === state.gameState.turn && state.gameState.phase !== "won" && data.phase === "won")) {
+            const currentEpoch = Number(state.gameState?.restartAt || 0);
+            const incomingEpoch = Number(data.restartAt || 0);
+            const isRestart = incomingEpoch > currentEpoch;
+            if (isRestart) {
+              state.guesses = {};
+              state.results = {};
+              state.handledResults = new Set();
+            }
+            if (!state.gameState || isRestart ||
+              (incomingEpoch === currentEpoch && (data.turn > state.gameState.turn ||
+                (data.turn === state.gameState.turn && state.gameState.phase !== "won" && data.phase === "won")))) {
               state.gameState = data;
               render();
             }
@@ -364,7 +517,10 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (state.gameType === "tictactoe" && parts[0] === "game" &&
             data && Array.isArray(data.board) && typeof data.moveCount === "number") {
-            if (!state.gameState || data.moveCount > state.gameState.moveCount) {
+            const currentEpoch = Number(state.gameState?.restartAt || 0);
+            const incomingEpoch = Number(data.restartAt || 0);
+            if (!state.gameState || incomingEpoch > currentEpoch ||
+              (incomingEpoch === currentEpoch && data.moveCount > state.gameState.moveCount)) {
               state.gameState = data;
               render();
             }
@@ -373,7 +529,23 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (state.gameType === "dotsandboxes" && parts[0] === "game" &&
             model.isDotsAndBoxesGame(data) &&
             typeof data.moveCount === "number") {
-            if (!state.gameState || data.moveCount > state.gameState.moveCount) {
+            const currentEpoch = Number(state.gameState?.restartAt || 0);
+            const incomingEpoch = Number(data.restartAt || 0);
+            if (!state.gameState || incomingEpoch > currentEpoch ||
+              (incomingEpoch === currentEpoch && data.moveCount > state.gameState.moveCount)) {
+              state.gameState = data;
+              render();
+            }
+            return;
+          }
+          if (state.gameType === "yahtzee" && parts[0] === "game" &&
+            data?.mode === "2P" && Array.isArray(data.players) && data.scorecards &&
+            typeof data.moveCount === "number") {
+            const current = state.gameState;
+            const currentEpoch = Number(current?.restartAt || 0);
+            const incomingEpoch = Number(data.restartAt || 0);
+            if (!current || incomingEpoch > currentEpoch ||
+              (incomingEpoch === currentEpoch && data.moveCount > current.moveCount)) {
               state.gameState = data;
               render();
             }
@@ -417,6 +589,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         function maybeStartGame() {
           if (!state.joined || state.gameState || getPlayers().length !== 2) return;
           const activePlayers = getPlayers();
+          if (["sudoku", "killersudoku", "chess", "battleship"].includes(state.gameType)) {
+            if (!standaloneController) startStandaloneGame(state.gameType, "2P");
+            return;
+          }
+          if (state.gameType === "yahtzee") {
+            if (!isRoomHost) return;
+            state.gameState = model.createYahtzeeMatch(activePlayers);
+            publish(`${roomTopic()}/game`, state.gameState).catch((error) =>
+              setBanner(`Could not start the game: ${error.message}`, "error")
+            );
+            render();
+            return;
+          }
           if (state.gameType === "tictactoe" || state.gameType === "dotsandboxes") {
             state.gameState = state.gameType === "dotsandboxes"
               ? model.createDotsAndBoxesGame(activePlayers)
@@ -442,12 +627,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         function render() {
+          if (["sudoku", "killersudoku", "chess", "battleship"].includes(state.gameType)) {
+            elements.roomHeading.hidden = true;
+            elements.gameGrid.hidden = true;
+            elements.ticTacToeGame.hidden = true;
+            elements.dotsAndBoxesGame.hidden = true;
+            elements.yahtzeeGame.hidden = true;
+            if (standaloneGameType === state.gameType) i18n.apply();
+            return;
+          }
           if (state.gameType === "tictactoe") {
             elements.roomHeading.hidden = true;
             elements.gameGrid.hidden = true;
             elements.ticTacToeGame.hidden = false;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = true;
+            elements.sudokuGame.hidden = true;
+            elements.killerSudokuGame.hidden = true;
+            elements.chessGame.hidden = true;
+            elements.battleshipGame.hidden = true;
             view.renderTicTacToe(state, getPlayers, pendingTicTacToeMove);
             i18n.apply();
             return;
@@ -458,6 +656,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = false;
             elements.yahtzeeGame.hidden = true;
+            elements.sudokuGame.hidden = true;
+            elements.killerSudokuGame.hidden = true;
+            elements.chessGame.hidden = true;
+            elements.battleshipGame.hidden = true;
             view.renderDotsAndBoxes(state, getPlayers, pendingDotsMove, localDotsBoxes);
             i18n.apply();
             return;
@@ -468,7 +670,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = false;
-            view.renderYahtzee(state, model);
+            elements.sudokuGame.hidden = true;
+            elements.killerSudokuGame.hidden = true;
+            elements.chessGame.hidden = true;
+            elements.battleshipGame.hidden = true;
+            view.renderYahtzee(state, model, pendingYahtzeeMove);
             i18n.apply();
             return;
           }
@@ -477,29 +683,117 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.ticTacToeGame.hidden = true;
           elements.dotsAndBoxesGame.hidden = true;
           elements.yahtzeeGame.hidden = true;
+          elements.sudokuGame.hidden = true;
+          elements.killerSudokuGame.hidden = true;
+          elements.chessGame.hidden = true;
+          elements.battleshipGame.hidden = true;
           view.render(state, getPlayers, processCurrentResult);
           i18n.apply();
         }
 
-        function rollYahtzeeDice() {
-          const nextGame = model.rollYahtzeeDice(state.gameState);
-          if (!nextGame) return;
+        async function updateYahtzeeGame(nextGame) {
+          if (!nextGame || pendingYahtzeeMove) return;
+          const previousGame = state.gameState;
           state.gameState = nextGame;
+          if (nextGame.mode !== "2P" || !state.room) {
+            render();
+            return;
+          }
+          pendingYahtzeeMove = true;
           render();
+          try {
+            await publish(`${roomTopic()}/game`, nextGame);
+          } catch (error) {
+            if (state.gameState === nextGame) state.gameState = previousGame;
+            elements.yahtzeeHint.textContent = i18n.t("Could not update the game: {error}", {
+              error: error.message
+            });
+          } finally {
+            pendingYahtzeeMove = false;
+            render();
+          }
+        }
+
+        function rollYahtzeeDice() {
+          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
+          const nextGame = model.rollYahtzeeDice(state.gameState);
+          updateYahtzeeGame(nextGame);
+        }
+
+        async function restartGame(gameType = state.gameType) {
+          const previousGame = state.gameState;
+          if (!previousGame) return;
+          const restartAt = Math.max(Date.now(), Number(previousGame.restartAt || 0) + 1);
+          if (gameType === "yahtzee") {
+            if (previousGame.mode === "2P") {
+              const nextGame = model.createYahtzeeMatch(previousGame.players);
+              nextGame.restartAt = restartAt;
+              nextGame.moveCount = previousGame.moveCount + 1;
+              await updateYahtzeeGame(nextGame);
+            } else {
+              state.gameState = model.createYahtzeeGame();
+              render();
+            }
+            return;
+          }
+          if (gameType === "tictactoe" || gameType === "dotsandboxes") {
+            const nextGame = gameType === "tictactoe"
+              ? model.createTicTacToeGame(previousGame.players)
+              : model.createDotsAndBoxesGame(previousGame.players);
+            nextGame.restartAt = restartAt;
+            state.gameState = nextGame;
+            render();
+            if (!localTicTacToe && !localDotsBoxes) {
+              try {
+                await publish(`${roomTopic()}/game`, nextGame);
+              } catch (error) {
+                if (state.gameState === nextGame) state.gameState = previousGame;
+                setBanner(`Could not restart the game: ${error.message}`, "error");
+                render();
+              }
+            }
+            return;
+          }
+          if (gameType === "1a2b") {
+            state.guesses = {};
+            state.results = {};
+            state.handledResults = new Set();
+            if (state.soloMode) {
+              state.soloSecret = model.createSecret();
+              state.gameState = { phase: "playing", turn: 1, activePlayerId: state.playerId };
+              render();
+              return;
+            }
+            const players = getPlayers();
+            const nextGame = {
+              phase: "playing",
+              turn: 1,
+              activePlayerId: players[0]?.id,
+              startedAt: Date.now(),
+              restartAt
+            };
+            state.gameState = nextGame;
+            render();
+            try {
+              await publish(`${roomTopic()}/game`, nextGame);
+            } catch (error) {
+              state.gameState = previousGame;
+              setBanner(`Could not restart the game: ${error.message}`, "error");
+              render();
+            }
+          }
         }
 
         function toggleYahtzeeDie(dieIndex) {
+          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
           const nextGame = model.toggleYahtzeeDie(state.gameState, dieIndex);
-          if (!nextGame) return;
-          state.gameState = nextGame;
-          render();
+          updateYahtzeeGame(nextGame);
         }
 
         function scoreYahtzeeCategory(categoryId) {
+          if (state.gameState?.mode === "2P" && state.gameState.activePlayerId !== state.playerId) return;
           const nextGame = model.scoreYahtzeeTurn(state.gameState, categoryId);
-          if (!nextGame) return;
-          state.gameState = nextGame;
-          render();
+          updateYahtzeeGame(nextGame);
         }
 
         async function submitTicTacToeMove(cell) {
@@ -610,8 +904,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.lobby.hidden = false;
           elements.roomError.textContent = "";
         });
+        elements.sudokuTile.addEventListener("click", () => selectStandaloneGame("sudoku"));
+        elements.killerSudokuTile.addEventListener("click", () => selectStandaloneGame("killersudoku"));
+        elements.chessTile.addEventListener("click", () => selectStandaloneGame("chess"));
+        elements.battleshipTile.addEventListener("click", () => selectStandaloneGame("battleship"));
         elements.yahtzeeTile.addEventListener("click", startYahtzeeGame);
         elements.create.addEventListener("click", () => {
+          isRoomHost = true;
           if (!window.mqtt) {
             elements.roomError.textContent = "Could not load online play.";
             return;
@@ -621,6 +920,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           enterRoom(code);
         });
         elements.join.addEventListener("click", () => {
+          isRoomHost = false;
           const code = elements.room.value.trim().toUpperCase();
           if (!model.isValidRoomCode(code)) {
             elements.roomError.textContent = "Enter a 6-digit room code.";
@@ -729,9 +1029,11 @@ document.addEventListener("DOMContentLoaded", async () => {
           scoreYahtzeeCategory(category.dataset.category);
         });
         elements.yahtzeeRestart.addEventListener("click", () => {
-          state.gameState = model.createYahtzeeGame();
-          render();
+          restartGame("yahtzee");
         });
+        elements.restart.addEventListener("click", () => restartGame("1a2b"));
+        elements.ticTacToeRestart.addEventListener("click", () => restartGame("tictactoe"));
+        elements.dotsRestart.addEventListener("click", () => restartGame("dotsandboxes"));
         elements.roomWaitingCopy.addEventListener("click", async () => {
           try {
             await navigator.clipboard.writeText(state.room);
@@ -742,6 +1044,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         });
         function returnHome() {
+          disposeStandalone();
           if (client) {
             const currentClient = client;
             if (state.joined && currentClient.connected) {
@@ -766,6 +1069,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.roomWaitingCopy.textContent = "Copy room code";
           elements.roomWaitingCode.textContent = "------";
           elements.game.hidden = true;
+          elements.standaloneError.hidden = true;
           elements.game.dataset.mode = "";
           elements.game.dataset.game = "";
           elements.create.disabled = false;

@@ -1157,6 +1157,35 @@
       .yahtzee-round strong { color: var(--text); font: 750 20px var(--mono); }
       .yahtzee-total small { color: var(--muted); font-size: 9px; }
       .yahtzee-round strong { font-size: 15px; }
+      .yahtzee-match-scores {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 7px;
+      }
+      .yahtzee-match-scores[hidden] { display: none; }
+      .yahtzee-player-score {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: #fff;
+        padding: 8px 10px;
+        color: var(--muted);
+        font-size: 9px;
+      }
+      .yahtzee-player-score strong {
+        overflow: hidden;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .yahtzee-player-score b { color: var(--text); font: 700 12px var(--mono); }
+      .yahtzee-player-score.is-turn { border-color: #e48755; color: #b65f33; }
+      .standalone-game[hidden] { display: none; }
+      .standalone-game:not([hidden]) { display: block; min-height: 100%; }
       .yahtzee-roll-label { color: #b65f33; font: 700 8px var(--mono); letter-spacing: .08em; }
       .yahtzee-dice { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
       .yahtzee-die {

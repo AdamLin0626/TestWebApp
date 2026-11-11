@@ -39,6 +39,10 @@
             <button class="game-tile" id="tic-tac-toe-tile" type="button"><span class="tile-copy"><strong>Tic Tac Toe</strong><small>Play a friend or a strong computer; oldest marks fade.</small></span><span class="tile-action">Play →</span></button>
             <button class="game-tile" id="dots-and-boxes-tile" type="button"><span class="tile-copy"><strong>點格棋</strong><small>6 × 4 board. Play a friend or a strong computer.</small></span><span class="tile-action">Play →</span></button>
             <button class="game-tile" id="yahtzee-tile" type="button"><span class="tile-copy"><strong>快艇骰子</strong><small>Roll, hold, and score with five dice.</small></span><span class="tile-action">Play →</span></button>
+            <button class="game-tile" id="sudoku-tile" type="button"><span class="tile-copy"><strong>Sudoku</strong><small>Fill the grid; race your rival to solve it.</small></span><span class="tile-action">Play →</span></button>
+            <button class="game-tile" id="killer-sudoku-tile" type="button"><span class="tile-copy"><strong>Killer Sudoku</strong><small>Use cage sums to solve the grid.</small></span><span class="tile-action">Play →</span></button>
+            <button class="game-tile" id="chess-tile" type="button"><span class="tile-copy"><strong>Chess</strong><small>Play a friend or a computer.</small></span><span class="tile-action">Play →</span></button>
+            <button class="game-tile" id="battleship-tile" type="button"><span class="tile-copy"><strong>Battleship</strong><small>Place your fleet and hunt your rival.</small></span><span class="tile-action">Play →</span></button>
             <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Memory match</strong><small>Find pairs. Flex your memory.</small></span><span class="tile-action">Soon</span></button>
             <button class="game-tile is-soon" type="button" disabled><span class="tile-copy"><strong>Four in a row</strong><small>A classic duel of strategy.</small></span><span class="tile-action">Soon</span></button>
           </div>
@@ -88,6 +92,7 @@
           <div class="room-heading">
             <div class="room-tools">
               <button class="button button-quiet" id="home-button" type="button">Exit</button>
+              <button class="button button-quiet" id="game-restart" type="button">Restart</button>
               <div class="room-code"><span>Room</span><strong id="room-code">------</strong></div>
             </div>
             <h1 id="game-title">1A2B</h1>
@@ -182,6 +187,7 @@
           <section id="tic-tac-toe-game" hidden aria-label="Tic Tac Toe game">
             <header class="tic-tac-toe-header">
               <button class="button button-quiet" id="tic-tac-toe-exit" type="button">Exit</button>
+              <button class="button button-quiet" id="tic-tac-toe-restart" type="button">Restart</button>
               <div class="tic-tac-toe-room"><span>Room</span><strong id="tic-tac-toe-room-code">------</strong></div>
               <div class="tic-tac-toe-title">
                 <h1>Tic Tac Toe</h1>
@@ -195,6 +201,7 @@
           <section id="dots-and-boxes-game" hidden aria-label="Dots and Boxes game">
             <header class="dots-game-header">
               <button class="button button-quiet" id="dots-game-exit" type="button">Exit</button>
+              <button class="button button-quiet" id="dots-game-restart" type="button">Restart</button>
               <div class="dots-game-room"><span>Room</span><strong id="dots-room-code">------</strong></div>
               <div class="dots-game-title">
                 <h1>點格棋</h1>
@@ -214,12 +221,13 @@
                 <h1>快艇骰子</h1>
                 <p>Roll, hold, and make every count.</p>
               </div>
-              <span class="mode-badge">1P · Solo</span>
+              <span class="mode-badge" id="yahtzee-mode-badge">1P · Solo</span>
             </header>
             <div class="yahtzee-summary">
               <div class="yahtzee-total"><span>TOTAL SCORE</span><strong id="yahtzee-total">0</strong><small>points</small></div>
               <div class="yahtzee-round"><span>ROUND</span><strong id="yahtzee-round">01 <small>of 13</small></strong></div>
             </div>
+            <div class="yahtzee-match-scores" id="yahtzee-match-scores" hidden></div>
             <div class="yahtzee-roll-label" id="yahtzee-roll-label">ROLL 1 OF 3</div>
             <div class="yahtzee-dice" id="yahtzee-dice" role="group" aria-label="Five dice"></div>
             <p class="yahtzee-hint" id="yahtzee-hint" role="status" aria-live="polite">Tap Roll to start your turn.</p>
@@ -233,6 +241,11 @@
               <div class="yahtzee-scorecard-footer" id="yahtzee-scorecard-footer"></div>
             </section>
           </section>
+          <p class="standalone-error" id="standalone-error" role="alert" hidden></p>
+          <section id="sudoku-game" class="standalone-game" hidden aria-label="Sudoku game"></section>
+          <section id="killer-sudoku-game" class="standalone-game" hidden aria-label="Killer Sudoku game"></section>
+          <section id="chess-game" class="standalone-game" hidden aria-label="Chess game"></section>
+          <section id="battleship-game" class="standalone-game" hidden aria-label="Battleship game"></section>
         </section>
       </main>
 
