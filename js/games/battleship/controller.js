@@ -174,12 +174,14 @@ export class BattleshipController {
 
   _startSolo() {
     if (this.mode !== '1P' || this.model.state.phase !== 'setup') return;
-    if (!this.model.state.players.p1.ready) return;
+    if (!this._fleetReady()) return;
+    this.model.state.players.p1.ready = true;
     this.model.autoPlace('p2');
     if (this.model.startGame()) this.render();
   }
 
   _markReady() {
+    if (!this._fleetReady()) return;
     if (this.readyPlayers.has(this.playerId)) return;
     this.readyPlayers.add(this.playerId);
     this._publish({ kind: 'ready', playerId: this.playerId });
@@ -224,6 +226,12 @@ export class BattleshipController {
   }
 
   render() {
+    // Keep readiness in sync with the fleet, including placements restored or
+    // completed through any path that does not pass through the usual action handler.
+    if (this.mode === '2P' && this.model.state.phase === 'setup' && this._fleetReady()) {
+      this.model.state.players[this.playerId].ready = true;
+      this._markReady();
+    }
     this.view.render(this.model.getSnapshot({ privateFor: this.playerId }), this.playerId);
   }
 }
