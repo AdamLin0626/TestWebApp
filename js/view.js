@@ -22,6 +22,10 @@ export class GameView {
       yahtzeeTile: $("#yahtzee-tile"),
       chessTile: $("#chess-tile"),
       battleshipTile: $("#battleship-tile"),
+      airHockeyTile: $("#air-hockey-tile"),
+      connectFourTile: $("#connect-four-tile"),
+      reversiTile: $("#reversi-tile"),
+      memoryTile: $("#memory-tile"),
       backHome: $("#back-home"),
       roomError: $("#room-error"),
       roomKicker: $("#room-kicker"),
@@ -71,6 +75,10 @@ export class GameView {
       yahtzeeGame: $("#yahtzee-game"),
       chessGame: $("#chess-game"),
       battleshipGame: $("#battleship-game"),
+      airHockeyGame: $("#airhockey-game"),
+      connectFourGame: $("#connectfour-game"),
+      reversiGame: $("#reversi-game"),
+      memoryGame: $("#memory-game"),
       standaloneError: $("#standalone-error"),
       yahtzeeDice: $("#yahtzee-dice"),
       yahtzeeRoll: $("#yahtzee-roll"),
@@ -109,15 +117,23 @@ export class GameView {
       dotsandboxes: "點格棋",
       yahtzee: "快艇骰子",
       chess: "Chess",
-      battleship: "Battleship"
+      battleship: "Battleship",
+      airhockey: "Air Hockey",
+      connectfour: "Connect Four",
+      reversi: "Reversi",
+      memory: "Memory Match"
     };
     const subtitles = {
-      "1a2b": "Guess the secret 4-digit number.",
+      "1a2b": "Guess the secret 4-digit code.",
       tictactoe: "Make three in a row.",
       dotsandboxes: "Complete boxes by drawing their four sides.",
       yahtzee: "Roll, hold, and make every count.",
       chess: "Take turns making legal moves. Checkmate wins.",
-      battleship: "Place your fleet and hunt your rival."
+      battleship: "Place your fleet and hunt your rival.",
+      airhockey: "Keep the puck moving. First to seven goals wins.",
+      connectfour: "Drop discs to connect four.",
+      reversi: "Flip more discs than your opponent.",
+      memory: "Find pairs and score points."
     };
     const gameLabels = {
       "1a2b": "1A2B game",
@@ -125,54 +141,37 @@ export class GameView {
       dotsandboxes: "Dots and Boxes game",
       yahtzee: "Yahtzee game",
       chess: "Chess game",
-      battleship: "Battleship game"
+      battleship: "Battleship game",
+      airhockey: "Air hockey game",
+      connectfour: "Connect Four game",
+      reversi: "Reversi game",
+      memory: "Memory match game"
     };
-    this.elements.gameTitle.textContent = titles[gameType] || titles["1a2b"];
-    this.elements.gameSubtitle.textContent = subtitles[gameType] || subtitles["1a2b"];
+    this.elements.gameTitle.textContent = this.translate(titles[gameType] || titles["1a2b"]);
+    this.elements.gameSubtitle.textContent = this.translate(subtitles[gameType] || subtitles["1a2b"]);
     this.elements.modeBadge.textContent = mode;
-    this.elements.game.setAttribute("aria-label", gameLabels[gameType] || gameLabels["1a2b"]);
+    this.elements.game.setAttribute("aria-label", this.translate(gameLabels[gameType] || gameLabels["1a2b"]));
   }
 
   setGameType(gameType, mode = "2P") {
-    const isTicTacToe = gameType === "tictactoe";
-    const isDotsAndBoxes = gameType === "dotsandboxes";
-    const titles = {
-      "1a2b": "1A2B",
-      tictactoe: "TIC TAC TOE",
-      dotsandboxes: "DOTS AND BOXES",
-      yahtzee: "YAHTZEE",
-      chess: "CHESS",
-      battleship: "BATTLESHIP"
+    const rooms = {
+      "1a2b": ["1A2B", "Create a private room or join a friend’s game.", "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.", "Create room →"],
+      tictactoe: ["TIC TAC TOE", "Create a room or join a friend for a moving 3×3 game.", "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed.", "Create game room →"],
+      dotsandboxes: ["DOTS AND BOXES", "Create a room or join a friend to play 點格棋.", "Take turns drawing lines. Complete a box to score and keep your turn.", "Create game room →"],
+      yahtzee: ["YAHTZEE", "Take turns rolling and scoring with a friend.", "Take turns rolling five dice and filling your own scorecard. The higher final score wins.", "Create game room →"],
+      chess: ["CHESS", "Play a full game of chess with a friend.", "Take turns making legal moves. Checkmate wins.", "Create game room →"],
+      battleship: ["BATTLESHIP", "Place your fleet and take turns finding each other’s ships.", "Place a standard fleet on a 10 × 10 board, then take turns firing.", "Create game room →"],
+      airhockey: ["AIR HOCKEY", "Play a real-time air hockey match with a friend.", "Each player controls one paddle. First to seven goals wins.", "Create game room →"],
+      connectfour: ["CONNECT FOUR", "Take turns dropping discs with a friend.", "Drop a disc into a column. Connect four in any direction to win.", "Create game room →"],
+      reversi: ["REVERSI", "Outflank a friend and claim the board.", "Place a disc to flip your opponent’s line. The most discs wins.", "Create game room →"],
+      memory: ["MEMORY MATCH", "Find pairs and outscore a friend.", "Take turns revealing two cards. A match scores a point and keeps your turn.", "Create game room →"]
     };
-    const title = titles[gameType] || "1A2B";
+    const [title, roomDescription, createDescription, createButton] = rooms[gameType] || rooms["1a2b"];
     this.setGameHeader(gameType, mode);
     this.elements.roomKicker.textContent = `${title} / TWO PLAYERS`;
-    this.elements.roomDescription.textContent = isTicTacToe
-      ? "Create a room or join a friend for a moving 3×3 game."
-      : isDotsAndBoxes
-        ? "Create a room or join a friend to play 點格棋."
-        : gameType === "yahtzee"
-          ? "Take turns rolling and scoring with a friend."
-          : gameType === "chess"
-              ? "Play a full game of chess with a friend."
-              : gameType === "battleship"
-                ? "Place your fleet and take turns finding each other’s ships."
-                : "Create a private room or join a friend’s game.";
-    this.elements.roomCreateDescription.textContent = isTicTacToe
-      ? "Invite a friend and take turns placing O and X. When the board fills, the oldest mark is removed."
-      : isDotsAndBoxes
-        ? "Take turns drawing lines. Complete a box to score and keep your turn."
-        : gameType === "yahtzee"
-          ? "Take turns rolling five dice and filling your own scorecard. The higher final score wins."
-          : gameType === "chess"
-              ? "Take turns making legal moves. Checkmate wins."
-              : gameType === "battleship"
-                ? "Place a standard fleet on a 10 × 10 board, then take turns firing."
-                : "Set your own secret code for your friend to guess. Once they join, you’ll each guess the other’s code in turn.";
-    this.elements.roomCreateButton.textContent = ["tictactoe", "dotsandboxes", "yahtzee",
-      "chess", "battleship"].includes(gameType)
-      ? "Create game room →"
-      : "Create room →";
+    this.elements.roomDescription.textContent = this.translate(roomDescription);
+    this.elements.roomCreateDescription.textContent = this.translate(createDescription);
+    this.elements.roomCreateButton.textContent = this.translate(createButton);
   }
 
   renderTicTacToe(state, getPlayers, pendingMove = false) {

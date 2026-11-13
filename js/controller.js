@@ -15,6 +15,13 @@ import { DotsAndBoxesController } from "./games/dotsandboxes/controller.js";
 import { YahtzeeModel } from "./games/yahtzee/model.js";
 import { YahtzeeView } from "./games/yahtzee/view.js";
 import { YahtzeeController } from "./games/yahtzee/controller.js";
+import { AirHockeyController } from "./games/airhockey/controller.js";
+import { ConnectFourController } from "./games/connectfour/controller.js";
+import { ReversiController } from "./games/reversi/controller.js";
+import { MemoryController } from "./games/memory/controller.js";
+
+const STANDALONE_GAME_TYPES = new Set(["chess", "battleship", "airhockey", "connectfour", "reversi", "memory"]);
+const STANDALONE_PROTOCOL_GAMES = new Set(["airhockey", "connectfour", "reversi", "memory"]);
 
 document.addEventListener("DOMContentLoaded", async () => {
       const i18n = await initializeI18n();
@@ -23,6 +30,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         const state = model.state;
         const view = new GameView(document, i18n.t);
         const elements = view.elements;
+        const standaloneRoots = {
+          chess: elements.chessGame,
+          battleship: elements.battleshipGame,
+          airhockey: elements.airHockeyGame,
+          connectfour: elements.connectFourGame,
+          reversi: elements.reversiGame,
+          memory: elements.memoryGame
+        };
+        const standaloneFactories = {
+          chess: ChessController,
+          battleship: BattleshipController,
+          airhockey: AirHockeyController,
+          connectfour: ConnectFourController,
+          reversi: ReversiController,
+          memory: MemoryController
+        };
         const a1b2Model = new A1B2Model();
         const ticTacToeModel = new TicTacToeModel(model);
         const dotsAndBoxesModel = new DotsAndBoxesModel(model);
@@ -68,7 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           standalonePlayerId = "";
           standaloneSubscriptions.clear();
           if (clearPending) pendingStandaloneMessages = [];
-          for (const root of [elements.chessGame, elements.battleshipGame]) {
+          for (const root of Object.values(standaloneRoots)) {
             root.replaceChildren();
             root.hidden = true;
           }
@@ -79,11 +102,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.name.value = state.playerName;
           localStorage.setItem("fourfold.name", state.playerName);
           disposeStandalone(false);
-          const roots = {
-            chess: elements.chessGame,
-            battleship: elements.battleshipGame
-          };
-          const root = roots[gameType];
+          const root = standaloneRoots[gameType];
           if (!root) throw new RangeError(`Unknown standalone game: ${gameType}`);
           standaloneGameType = gameType;
           root.hidden = false;
@@ -102,8 +121,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.ticTacToeGame.hidden = true;
           elements.dotsAndBoxesGame.hidden = true;
           elements.yahtzeeGame.hidden = true;
-          elements.chessGame.hidden = gameType !== "chess";
-          elements.battleshipGame.hidden = gameType !== "battleship";
+          for (const [type, gameRoot] of Object.entries(standaloneRoots)) {
+            gameRoot.hidden = type !== gameType;
+          }
           view.setGameHeader(gameType, mode);
           const players = getPlayers();
           const localSeat = mode === "1P" || players[0]?.id === state.playerId ? "p1" : "p2";
@@ -114,12 +134,21 @@ document.addEventListener("DOMContentLoaded", async () => {
               return () => standaloneSubscriptions.delete(listener);
             },
             publish(message) {
-              const payload = gameType === "battleship"
-                ? message
-                : gameType === "chess"
-                  ? { game: gameType, playerId: localSeat, snapshot: message }
-                  : { game: gameType, ...message };
-              return publish(`${roomTopic()}/game`, payload, gameType !== "battleship");
+              let payload;
+              let retain = gameType !== "battleship";
+              if (gameType === "battleship") {
+                payload = message;
+                retain = false;
+              } else if (gameType === "chess") {
+                payload = { game: gameType, playerId: localSeat, snapshot: message };
+              } else if (STANDALONE_PROTOCOL_GAMES.has(gameType)) {
+                const { retain: retainMessage = true, ...snapshot } = message;
+                retain = retainMessage;
+                payload = { game: gameType, playerId: localSeat, snapshot };
+              } else {
+                payload = message;
+              }
+              return publish(`${roomTopic()}/game`, payload, retain);
             }
           } : null;
           const options = {
@@ -127,6 +156,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             mode,
             playerId: localSeat,
             playerName: state.playerName,
+            players,
             transport,
             t: i18n.t,
             onError: (error) => {
@@ -136,13 +166,16 @@ document.addEventListener("DOMContentLoaded", async () => {
               elements.standaloneError.hidden = false;
             }
           };
-          standaloneController = gameType === "chess"
-            ? new ChessController(options)
-            : new BattleshipController(options);
+          const Controller = standaloneFactories[gameType];
+          if (!Controller) throw new RangeError(`Unknown standalone game: ${gameType}`);
+          standaloneController = new Controller(options);
           standaloneController.start();
           for (const data of pendingStandaloneMessages.splice(0)) {
             if (data.playerId === standalonePlayerId) continue;
-            const message = gameType === "chess" ? data.snapshot : data;
+            const message = gameType === "chess" ? data.snapshot
+              : STANDALONE_PROTOCOL_GAMES.has(gameType)
+                ? { ...data.snapshot, remotePlayerId: data.playerId }
+                : data;
             for (const listener of standaloneSubscriptions) listener(message);
           }
           i18n.apply();
@@ -161,6 +194,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.roomWaiting.hidden = true;
           elements.lobby.hidden = false;
           elements.roomError.textContent = "";
+          i18n.apply();
         }
 
         async function submitDotsMove(edge) {
@@ -443,10 +477,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.game.dataset.game = state.gameType;
             view.setGameHeader(state.gameType, "2P");
             const isBoardGame = state.gameType !== "1a2b";
-            elements.game.setAttribute("aria-label", state.gameType === "tictactoe"
-              ? "Tic Tac Toe game"
-              : state.gameType === "dotsandboxes" ? "Dots and Boxes game"
-                : state.gameType === "yahtzee" ? "Yahtzee game" : "1A2B game");
             elements.playersCard.hidden = isBoardGame;
             elements.secretCard.hidden = state.gameType !== "1a2b";
             elements.soloSecret.hidden = true;
@@ -485,10 +515,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             return;
           }
           if (parts[0] === "game" && data?.game === state.gameType &&
-            ["chess", "battleship"].includes(state.gameType)) {
+            STANDALONE_GAME_TYPES.has(state.gameType)) {
             if (data.playerId === standalonePlayerId) return;
             if (standaloneSubscriptions.size) {
-              const message = state.gameType === "chess" ? data.snapshot : data;
+              const message = state.gameType === "chess" ? data.snapshot
+                : STANDALONE_PROTOCOL_GAMES.has(state.gameType)
+                  ? { ...data.snapshot, remotePlayerId: data.playerId }
+                  : data;
               for (const listener of standaloneSubscriptions) listener(message);
             } else {
               pendingStandaloneMessages = [data];
@@ -586,7 +619,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         function maybeStartGame() {
           if (!state.joined || state.gameState || getPlayers().length !== 2) return;
           const activePlayers = getPlayers();
-          if (["chess", "battleship"].includes(state.gameType)) {
+          if (STANDALONE_GAME_TYPES.has(state.gameType)) {
             if (!standaloneController) startStandaloneGame(state.gameType, "2P");
             return;
           }
@@ -625,13 +658,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         function render() {
           view.setGameHeader(state.gameType, state.mode);
-          if (["sudoku", "chess", "battleship"].includes(state.gameType)) {
+          if (state.gameType === "sudoku" || STANDALONE_GAME_TYPES.has(state.gameType)) {
             elements.gameGrid.hidden = true;
             elements.ticTacToeGame.hidden = true;
             elements.dotsAndBoxesGame.hidden = true;
             elements.yahtzeeGame.hidden = true;
-            elements.chessGame.hidden = state.gameType !== "chess";
-            elements.battleshipGame.hidden = state.gameType !== "battleship";
+            for (const [type, root] of Object.entries(standaloneRoots)) {
+              root.hidden = type !== state.gameType;
+            }
             if (standaloneGameType === state.gameType) i18n.apply();
             return;
           }
@@ -800,6 +834,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         elements.chessTile.addEventListener("click", () => selectStandaloneGame("chess"));
         elements.battleshipTile.addEventListener("click", () => selectStandaloneGame("battleship"));
+        elements.airHockeyTile.addEventListener("click", () => selectStandaloneGame("airhockey"));
+        elements.connectFourTile.addEventListener("click", () => selectStandaloneGame("connectfour"));
+        elements.reversiTile.addEventListener("click", () => selectStandaloneGame("reversi"));
+        elements.memoryTile.addEventListener("click", () => selectStandaloneGame("memory"));
         elements.yahtzeeTile.addEventListener("click", startYahtzeeGame);
         elements.create.addEventListener("click", () => {
           isRoomHost = true;
