@@ -56,6 +56,7 @@ export async function initializeI18n(documentRef = document, navigatorRef = navi
 
   const localizeNode = (node) => {
     if (node.nodeType === 3) {
+      if (node.parentElement?.closest("[data-no-i18n]")) return;
       let original = originals.get(node);
       if (!original || node.nodeValue !== original.translated) {
         original = { source: node.nodeValue, translated: "" };
@@ -71,7 +72,7 @@ export async function initializeI18n(documentRef = document, navigatorRef = navi
       if (node.nodeValue !== translated) node.nodeValue = translated;
       return;
     }
-    if (node.nodeType !== 1) return;
+    if (node.nodeType !== 1 || node.closest("[data-no-i18n]")) return;
     for (const attribute of ["placeholder", "aria-label", "title", "alt"]) {
       if (!node.hasAttribute(attribute)) continue;
       let saved = originals.get(node);

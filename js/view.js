@@ -14,6 +14,22 @@ export class GameView {
       roomWaitingStatus: $("#room-waiting-status"),
       roomWaitingCode: $("#room-waiting-code"),
       roomWaitingCopy: $("#waiting-copy"),
+      pairedStatus: $("#paired-status"),
+      pairedTitle: $("#paired-title"),
+      pairedDetail: $("#paired-detail"),
+      matchOverlay: $("#match-overlay"),
+      matchTitle: $("#match-title"),
+      matchStatus: $("#match-status"),
+      matchDecisionActions: $("#match-decision-actions"),
+      matchRps: $("#match-rps"),
+      matchForfeit: $("#match-forfeit"),
+      matchGestureActions: $("#match-gesture-actions"),
+      resultOverlay: $("#result-overlay"),
+      resultTitle: $("#result-title"),
+      resultDetail: $("#result-detail"),
+      resultActions: $("#result-actions"),
+      resultHome: $("#result-home"),
+      resultReplay: $("#result-replay"),
       modeOne: $("#mode-one"),
       modeTwo: $("#mode-two"),
       gameTile: $("#game-tile"),
@@ -90,7 +106,23 @@ export class GameView {
       yahtzeeScoreList: $("#yahtzee-score-list"),
       yahtzeeScorecardFooter: $("#yahtzee-scorecard-footer"),
       yahtzeeMatchScores: $("#yahtzee-match-scores"),
-      restart: $("#game-restart")
+      restart: $("#game-restart"),
+      chatRoot: $("#room-chat"),
+      chatLauncher: $("#chat-launcher"),
+      chatUnread: $("#chat-unread"),
+      chatNotice: $("#chat-notice"),
+      chatNoticeName: $("#chat-notice-name"),
+      chatNoticeText: $("#chat-notice-text"),
+      chatPanel: $("#chat-panel"),
+      chatClose: $("#chat-close"),
+      chatConnection: $("#chat-connection"),
+      chatMessages: $("#chat-messages"),
+      chatEmpty: $("#chat-empty"),
+      chatForm: $("#chat-form"),
+      chatInput: $("#chat-input"),
+      chatSend: $("#chat-send"),
+      chatCount: $("#chat-count"),
+      chatError: $("#chat-error")
     };
   }
 
@@ -172,6 +204,79 @@ export class GameView {
     this.elements.roomDescription.textContent = this.translate(roomDescription);
     this.elements.roomCreateDescription.textContent = this.translate(createDescription);
     this.elements.roomCreateButton.textContent = this.translate(createButton);
+  }
+
+  setPairingRoom() {
+    this.elements.roomKicker.textContent = this.translate("2P / PAIR FIRST");
+    this.elements.roomDescription.textContent = this.translate("Pair with a friend first, then choose a game together.");
+    this.elements.roomCreateDescription.textContent = this.translate("Create a room or enter the six-digit room code shared by your friend. Choose a game after both players connect.");
+    this.elements.roomCreateButton.textContent = this.translate("Create room →");
+  }
+
+  renderPairStatus(snapshot, localName = "", opponentName = "") {
+    const paired = Boolean(snapshot?.ready && snapshot.opponentId);
+    this.elements.pairedStatus.hidden = !paired;
+    if (!paired) return;
+    this.elements.pairedTitle.textContent = this.translate("Paired with {name}", { name: opponentName || this.translate("Opponent") });
+    let detail = "Choose a game below. Your friend will choose one too.";
+    if (snapshot.localGame && !snapshot.opponentGame) detail = "You chose a game. Waiting for your friend to choose.";
+    else if (!snapshot.localGame && snapshot.opponentGame) detail = "Your friend chose a game. Choose yours below.";
+    else if (snapshot.bothSelected) detail = "Both games are selected. Decide with rock, paper, scissors or pass.";
+    this.elements.pairedDetail.textContent = this.translate(detail);
+  }
+
+  renderMatchmaking(snapshot, gameNames = {}) {
+    const show = Boolean(snapshot?.bothSelected && !snapshot.result);
+    this.elements.matchOverlay.hidden = !show;
+    if (!show) return;
+    const localName = this.translate(gameNames[snapshot.localGame] || snapshot.localGame);
+    const opponentName = this.translate(gameNames[snapshot.opponentGame] || snapshot.opponentGame);
+    const localDecided = Boolean(snapshot.localDecision);
+    const bothRps = snapshot.localDecision === "rps" && snapshot.opponentDecision === "rps";
+    const bothDecidedWithoutRps = Boolean(snapshot.bothDecided && !bothRps);
+    this.elements.matchDecisionActions.hidden = bothRps || bothDecidedWithoutRps;
+    this.elements.matchRps.disabled = localDecided;
+    this.elements.matchForfeit.disabled = localDecided;
+    this.elements.matchGestureActions.hidden = !bothRps;
+    this.elements.matchGestureActions.querySelectorAll("[data-gesture]").forEach((button) => {
+      button.disabled = Boolean(snapshot.localGesture);
+      button.setAttribute("aria-pressed", String(button.dataset.gesture === snapshot.localGesture));
+    });
+
+    let status = "Your game: {mine}. Their game: {theirs}. Choose rock, paper, scissors or pass.";
+    if (localDecided && !snapshot.opponentDecision) status = "You have decided. Waiting for your friend.";
+    else if (!localDecided && snapshot.opponentDecision) status = "Your friend has decided. Make your choice.";
+    else if (bothDecidedWithoutRps && snapshot.localDecision === "forfeit" && snapshot.opponentDecision === "forfeit") status = "Both players passed. Starting the selected game…";
+    else if (bothDecidedWithoutRps && snapshot.localDecision === "forfeit") status = "You passed. Starting the game your friend chose…";
+    else if (bothDecidedWithoutRps) status = "Your friend passed. Starting your game…";
+    else if (bothRps && snapshot.localGesture && !snapshot.opponentGesture) status = "You chose {gesture}. Waiting for your friend.";
+    else if (bothRps && !snapshot.localGesture) status = "Choose rock, paper or scissors.";
+    else if (bothRps && snapshot.localGesture && snapshot.opponentGesture) status = "Both choices are in. Deciding the game…";
+    const gestureLabel = snapshot.localGesture
+      ? snapshot.localGesture[0].toUpperCase() + snapshot.localGesture.slice(1)
+      : "";
+    this.elements.matchStatus.textContent = this.translate(status, {
+      mine: localName,
+      theirs: opponentName,
+      gesture: this.translate(gestureLabel)
+    });
+  }
+
+  showResult({ title, detail = "" }) {
+    this.elements.matchOverlay.hidden = true;
+    this.elements.resultTitle.textContent = title;
+    this.elements.resultDetail.textContent = detail;
+    this.elements.resultActions.hidden = true;
+    this.elements.resultOverlay.hidden = false;
+  }
+
+  showResultActions() {
+    this.elements.resultActions.hidden = false;
+  }
+
+  hideResult() {
+    this.elements.resultOverlay.hidden = true;
+    this.elements.resultActions.hidden = true;
   }
 
   renderTicTacToe(state, getPlayers, pendingMove = false) {
@@ -599,6 +704,93 @@ export class GameView {
       item.append(index, detail, outcome);
       return item;
     }).reverse());
+  }
+
+  setChatAvailable(available) {
+    this.elements.chatRoot.hidden = !available;
+    if (!available) {
+      this.setChatOpen(false);
+      this.hideChatNotification();
+    }
+  }
+
+  setChatOpen(open) {
+    const { chatPanel, chatLauncher } = this.elements;
+    chatPanel.classList.toggle("is-open", open);
+    chatPanel.setAttribute("aria-hidden", String(!open));
+    chatPanel.inert = !open;
+    chatLauncher.setAttribute("aria-expanded", String(open));
+  }
+
+  setChatUnread(count) {
+    const unread = Math.max(0, Number(count) || 0);
+    this.elements.chatUnread.hidden = unread === 0;
+    this.elements.chatUnread.textContent = unread > 99 ? "99+" : String(unread);
+    this.elements.chatUnread.setAttribute("aria-label", this.translate("Unread messages: {count}", { count: unread }));
+  }
+
+  setChatConnection(message) {
+    this.elements.chatConnection.textContent = message;
+    this.elements.chatConnection.hidden = !message;
+  }
+
+  setChatSendEnabled(enabled) {
+    this.elements.chatInput.disabled = !enabled;
+    this.elements.chatSend.disabled = !enabled;
+  }
+
+  setChatError(message) {
+    this.elements.chatError.textContent = message;
+    this.elements.chatError.hidden = !message;
+  }
+
+  updateChatCount(count, maximum) {
+    this.elements.chatCount.textContent = `${count} / ${maximum}`;
+  }
+
+  renderChatMessages(messages, localPlayerId) {
+    const language = this.document.documentElement.lang || "en";
+    const timeFormatter = new Intl.DateTimeFormat(language, { hour: "numeric", minute: "2-digit" });
+    const items = messages.map((message) => {
+      const item = this.document.createElement("li");
+      item.dataset.noI18n = "";
+      item.className = `chat-message${message.playerId === localPlayerId ? " is-self" : ""}`;
+      const meta = this.document.createElement("div");
+      meta.className = "chat-message-meta";
+      const name = this.document.createElement("strong");
+      name.textContent = message.playerName || this.translate("Opponent");
+      const time = this.document.createElement("time");
+      const sentAt = Number.isFinite(Number(message.sentAt)) ? Number(message.sentAt) : Date.now();
+      const date = new Date(sentAt);
+      time.dateTime = date.toISOString();
+      time.textContent = timeFormatter.format(date);
+      meta.append(name, time);
+      const body = this.document.createElement("p");
+      body.className = "chat-message-body";
+      body.textContent = message.text;
+      item.append(meta, body);
+      return item;
+    });
+    this.elements.chatMessages.replaceChildren(...items);
+    this.elements.chatEmpty.hidden = messages.length > 0;
+    this.elements.chatMessages.scrollTop = this.elements.chatMessages.scrollHeight;
+  }
+
+  showChatNotification({ name, text }) {
+    const notice = this.elements.chatNotice;
+    notice.hidden = true;
+    notice.classList.remove("is-visible");
+    this.elements.chatNoticeName.textContent = name;
+    this.elements.chatNoticeText.textContent = text;
+    notice.setAttribute("aria-label", this.translate("New message from {name}", { name }));
+    void notice.offsetWidth;
+    notice.hidden = false;
+    notice.classList.add("is-visible");
+  }
+
+  hideChatNotification() {
+    this.elements.chatNotice.hidden = true;
+    this.elements.chatNotice.classList.remove("is-visible");
   }
 
   updateGuessSlots(state) {

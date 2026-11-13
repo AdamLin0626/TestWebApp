@@ -4,7 +4,7 @@ import { AirHockeyView } from './view.js';
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export class AirHockeyController {
-  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, onAction = () => {}, onOutcome = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('AirHockeyController requires a root element');
     this.root = root;
     this.mode = mode === '2P' ? '2P' : '1P';
@@ -13,6 +13,8 @@ export class AirHockeyController {
     this.players = players;
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.model = new AirHockeyModel();
     this.view = new AirHockeyView(root, { t });
     this.state = null;
@@ -22,6 +24,8 @@ export class AirHockeyController {
     this.lastPublish = 0;
     this.inputSequence = 0;
     this.lastRemoteInput = 0;
+    this.lastSelfSound = 0;
+    this.lastOpponentSound = 0;
     this.awaitingHostSnapshot = this.mode === '2P' && this.playerId === 'p2';
     this.disposed = false;
   }
@@ -50,7 +54,9 @@ export class AirHockeyController {
     const delta = this.lastFrame ? Math.min(0.035, (time - this.lastFrame) / 1000) : 1 / 60;
     this.lastFrame = time;
     if (this.mode === '1P') {
+      const previousPaddle = this.state.paddles.p2;
       this.state = this.model.moveComputerPaddle(this.state, delta);
+      this._maybePaddleSound('opponent', previousPaddle, this.state.paddles.p2);
       this.state = this.model.step(this.state, delta);
     } else if (this.playerId === 'p1') {
       this.state = this.model.step(this.state, delta);
@@ -65,13 +71,24 @@ export class AirHockeyController {
 
   _movePaddle(x, y) {
     if (this.disposed || this.state?.phase !== 'playing') return;
+    const previousPaddle = this.state.paddles[this.playerId];
     const authoritativeMoveCount = this.state.moveCount;
     this.state = this.model.setPaddle(this.state, this.playerId, x, y);
+    this._maybePaddleSound('self', previousPaddle, this.state.paddles[this.playerId]);
     if (this.mode === '2P' && this.playerId === 'p2') this.state.moveCount = authoritativeMoveCount;
     this.render();
     if (this.mode === '2P' && this.playerId === 'p2') {
       this._publish({ kind: 'input', x: this.state.paddles.p2.x, y: this.state.paddles.p2.y, sequence: ++this.inputSequence }, false);
     }
+  }
+
+  _maybePaddleSound(actor, before, after) {
+    if (!before || !after || Math.hypot(after.x - before.x, after.y - before.y) < 0.12) return;
+    const key = actor === 'self' ? 'lastSelfSound' : 'lastOpponentSound';
+    const now = Date.now();
+    if (now - this[key] < 450) return;
+    this[key] = now;
+    this.onAction(actor);
   }
 
   _publishState(retain) {
@@ -94,7 +111,9 @@ export class AirHockeyController {
       && Number.isFinite(message.x) && Number.isFinite(message.y)
       && Number(message.sequence) > this.lastRemoteInput) {
       this.lastRemoteInput = Number(message.sequence);
+      const previousPaddle = this.state.paddles.p2;
       this.state = this.model.setPaddle(this.state, 'p2', message.x, message.y);
+      this._maybePaddleSound('opponent', previousPaddle, this.state.paddles.p2);
       return true;
     }
     if (message.kind === 'restart' && this.playerId === 'p1' && message.remotePlayerId === 'p2') {
@@ -131,7 +150,10 @@ export class AirHockeyController {
   }
 
   render() {
-    if (this.state) this.view.render(this.state, this.playerId, { mode: this.mode });
+    if (this.state) {
+      this.view.render(this.state, this.playerId, { mode: this.mode });
+      this.onOutcome(this.state);
+    }
   }
 
   dispose() {

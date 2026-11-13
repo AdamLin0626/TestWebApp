@@ -1,9 +1,9 @@
 export class DotsAndBoxesController {
-  constructor({ model, getState, isLocal, publish, render, onError = () => {}, delay = 120 } = {}) {
+  constructor({ model, getState, isLocal, publish, render, onError = () => {}, onAction = () => {}, delay = 120 } = {}) {
     if (!model || typeof getState !== "function" || typeof publish !== "function") {
       throw new TypeError("DotsAndBoxesController requires a model, state accessor, and publisher.");
     }
-    Object.assign(this, { model, getState, isLocal, publish, render, onError, delay });
+    Object.assign(this, { model, getState, isLocal, publish, render, onError, onAction, delay });
     this.pending = false;
   }
 
@@ -17,6 +17,7 @@ export class DotsAndBoxesController {
     this.pending = true;
     this.render();
     if (this.isLocal()) {
+      this.onAction('self');
       while (state.gameState.phase === "playing" && state.gameState.activePlayerId === "computer") {
         await new Promise((resolve) => window.setTimeout(resolve, this.delay));
         if (!this.isLocal()) break;
@@ -28,6 +29,7 @@ export class DotsAndBoxesController {
           return;
         }
         state.gameState = aiMove;
+        this.onAction('opponent');
         this.render();
       }
       this.pending = false;
@@ -36,6 +38,7 @@ export class DotsAndBoxesController {
     }
     try {
       await this.publish(nextGame);
+      this.onAction('self');
     } catch (error) {
       if (state.gameState === nextGame) state.gameState = previousGame;
       this.onError(error);

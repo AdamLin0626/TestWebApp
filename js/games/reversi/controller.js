@@ -4,7 +4,7 @@ import { ReversiView } from './view.js';
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export class ReversiController {
-  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, onAction = () => {}, onOutcome = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('ReversiController requires a root element');
     this.root = root;
     this.mode = mode === '2P' ? '2P' : '1P';
@@ -13,6 +13,8 @@ export class ReversiController {
     this.players = players;
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.model = new ReversiModel();
     this.view = new ReversiView(root, { t });
     this.state = null;
@@ -43,6 +45,7 @@ export class ReversiController {
     this.pending = true;
     this.render();
     if (this.mode === '1P') {
+      this.onAction('self');
       if (next.phase === 'playing' && next.currentPlayerId === 'p2') {
         this._scheduleComputerMove();
         return;
@@ -53,6 +56,7 @@ export class ReversiController {
     }
     try {
       await this._publish({ kind: 'state', state: next, retain: true });
+      this.onAction('self');
     } catch (error) {
       if (this.state === next) this.state = previous;
       this.onError(error);
@@ -69,7 +73,10 @@ export class ReversiController {
       if (this.disposed || this.state !== expected) return;
       const index = this.model.chooseComputerMove(this.state, 'p2');
       const computerMove = this.model.applyMove(this.state, 'p2', index);
-      if (computerMove) this.state = computerMove;
+      if (computerMove) {
+        this.state = computerMove;
+        this.onAction('opponent');
+      }
       if (this.state.phase === 'playing' && this.state.currentPlayerId === 'p2') {
         this.render();
         this._scheduleComputerMove();
@@ -94,9 +101,13 @@ export class ReversiController {
     const incoming = message.state;
     const isInitialHostSnapshot = this.awaitingHostSnapshot;
     this.awaitingHostSnapshot = false;
+    const previous = this.state;
     if (!isInitialHostSnapshot && (incoming.restartAt < this.state.restartAt
       || (incoming.restartAt === this.state.restartAt && incoming.moveCount <= this.state.moveCount))) return false;
     this.state = incoming;
+    if (!isInitialHostSnapshot && incoming.restartAt === previous.restartAt && incoming.moveCount > previous.moveCount) {
+      this.onAction('opponent');
+    }
     this.render();
     return true;
   }
@@ -134,6 +145,7 @@ export class ReversiController {
     const legal = this.state.phase === 'playing'
       ? this.model.getLegalMoves(this.state.board, this.state.currentPlayerId) : [];
     this.view.render(this.state, this.playerId, legal, { pending: this.pending, mode: this.mode });
+    if (!this.pending) this.onOutcome(this.state);
   }
 
   dispose() {

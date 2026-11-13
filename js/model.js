@@ -76,8 +76,7 @@ export class GameModel {
   }
 
   roomTopic() {
-    const version = this.state.gameType === "dotsandboxes" ? "v2" : "v1";
-    return `fourfold/${this.state.gameType}/${version}/${this.state.room}`;
+    return `fourfold/duel/v1/${this.state.room}`;
   }
 
   playerTopic(id) {

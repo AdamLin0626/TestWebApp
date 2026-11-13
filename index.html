@@ -31,6 +31,10 @@
             <button class="mode-option" id="mode-one" type="button" aria-pressed="true">1P · Solo</button>
             <button class="mode-option" id="mode-two" type="button" aria-pressed="false">2P · Friends</button>
           </div>
+          <aside class="paired-status" id="paired-status" hidden aria-live="polite">
+            <strong id="paired-title">Paired with a friend</strong>
+            <span id="paired-detail">Choose a game together.</span>
+          </aside>
           <h2 class="home-greeting">Good to see you, <span id="greeting-name">Alex</span>.</h2>
           <div class="game-list">
             <button class="game-tile" id="game-tile" type="button">
@@ -225,8 +229,77 @@
           <section id="reversi-game" class="standalone-game" hidden aria-label="Reversi game"></section>
           <section id="memory-game" class="standalone-game" hidden aria-label="Memory match game"></section>
           </div>
-        </section>
+      </section>
       </main>
+
+      <aside class="room-chat" id="room-chat" hidden>
+        <button class="chat-launcher" id="chat-launcher" type="button" aria-label="Open room chat" aria-controls="chat-panel" aria-expanded="false">
+          <span class="chat-launcher-label">Messages</span>
+          <span class="chat-launcher-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M20.25 11.5a8.25 8.25 0 0 1-8.25 8.25H6l-3 1.5v-9.75A8.25 8.25 0 0 1 11.25 3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M8 11h8M8 14.5h5"/></svg>
+          </span>
+          <span class="chat-unread" id="chat-unread" hidden></span>
+        </button>
+        <button class="chat-notice" id="chat-notice" type="button" aria-live="polite" hidden>
+          <span class="chat-notice-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><path d="M20.25 11.5a8.25 8.25 0 0 1-8.25 8.25H6l-3 1.5v-9.75A8.25 8.25 0 0 1 11.25 3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M8 11h8M8 14.5h5"/></svg>
+          </span>
+          <span class="chat-notice-copy" data-no-i18n><strong id="chat-notice-name"></strong><span id="chat-notice-text"></span></span>
+        </button>
+        <section class="chat-panel" id="chat-panel" role="dialog" aria-label="Room chat" aria-hidden="true" inert>
+          <header class="chat-panel-header">
+            <div>
+              <span class="chat-kicker">Room chat</span>
+              <h2 id="chat-heading">Messages</h2>
+            </div>
+            <button class="chat-close" id="chat-close" type="button" aria-label="Close chat">×</button>
+          </header>
+          <p class="chat-room-note">Messages are visible to current room members.</p>
+          <p class="chat-connection" id="chat-connection" role="status" aria-live="polite" hidden></p>
+          <div class="chat-transcript" id="chat-transcript">
+            <ol class="chat-messages" id="chat-messages" role="log" aria-live="polite" aria-relevant="additions"></ol>
+            <p class="chat-empty" id="chat-empty">No messages yet. Say hello!</p>
+          </div>
+          <form class="chat-form" id="chat-form">
+            <label class="sr-only" for="chat-input">Type a message…</label>
+            <textarea id="chat-input" maxlength="280" rows="2" placeholder="Type a message…" autocomplete="off"></textarea>
+            <div class="chat-compose-row">
+              <span class="chat-count" id="chat-count">0 / 280</span>
+              <button class="button button-primary" id="chat-send" type="submit">Send message</button>
+            </div>
+            <p class="chat-error" id="chat-error" role="status" aria-live="polite" hidden></p>
+          </form>
+        </section>
+      </aside>
+
+      <div class="playroom-overlay" id="match-overlay" hidden>
+        <section class="playroom-dialog" role="dialog" aria-modal="true" aria-labelledby="match-title">
+          <span class="dialog-kicker">PLAYROOM MATCH</span>
+          <h2 id="match-title">Both game choices are in</h2>
+          <p id="match-status" role="status" aria-live="polite">Choose how to decide which game to play.</p>
+          <div class="dialog-actions" id="match-decision-actions">
+            <button class="button button-primary" id="match-rps" type="button">Play rock, paper, scissors</button>
+            <button class="button button-secondary" id="match-forfeit" type="button">Pass and accept their game</button>
+          </div>
+          <div class="gesture-actions" id="match-gesture-actions" hidden>
+            <button class="button button-secondary" type="button" data-gesture="rock">Rock</button>
+            <button class="button button-secondary" type="button" data-gesture="paper">Paper</button>
+            <button class="button button-secondary" type="button" data-gesture="scissors">Scissors</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="playroom-overlay" id="result-overlay" hidden>
+        <section class="playroom-dialog result-dialog" role="dialog" aria-modal="true" aria-labelledby="result-title">
+          <span class="dialog-kicker">MATCH COMPLETE</span>
+          <h2 id="result-title">You win!</h2>
+          <p id="result-detail" role="status" aria-live="polite"></p>
+          <div class="dialog-actions result-actions" id="result-actions" hidden>
+            <button class="button button-secondary" id="result-home" type="button">Back to game list</button>
+            <button class="button button-primary" id="result-replay" type="button">Play again</button>
+          </div>
+        </section>
+      </div>
 
     </div>
   </body>

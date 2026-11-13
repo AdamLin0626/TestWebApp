@@ -4,7 +4,7 @@ import { MemoryView } from './view.js';
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export class MemoryController {
-  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, onAction = () => {}, onOutcome = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('MemoryController requires a root element');
     this.root = root;
     this.mode = mode === '2P' ? '2P' : '1P';
@@ -13,6 +13,8 @@ export class MemoryController {
     this.players = players;
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.model = new MemoryModel();
     this.view = new MemoryView(root, { t });
     this.state = null;
@@ -41,22 +43,42 @@ export class MemoryController {
     const next = this.model.applyFlip(previous, this.playerId, index);
     if (!next) return;
     this.state = next;
+    this.pending = this.mode === '2P';
     this._rememberVisible();
     this.render();
     if (next.phase === 'mismatch') {
       this._scheduleMismatch();
-      if (this.mode === '2P') await this._publish({ kind: 'state', state: next, retain: true }).catch(this.onError);
+      if (this.mode === '2P') {
+        try {
+          await this._publish({ kind: 'state', state: next, retain: true });
+          this.onAction('self');
+        } catch (error) {
+          if (this.state === next) this.state = previous;
+          this.onError(error);
+        } finally {
+          this.pending = false;
+          this.render();
+        }
+      } else {
+        this.onAction('self');
+      }
       return;
     }
     if (this.mode === '1P') {
+      this.onAction('self');
       if (next.phase === 'playing' && next.currentPlayerId === 'p2') this._runComputerTurn();
       return;
     }
-    await this._publish({ kind: 'state', state: next, retain: true }).catch((error) => {
+    try {
+      await this._publish({ kind: 'state', state: next, retain: true });
+      this.onAction('self');
+    } catch (error) {
       if (this.state === next) this.state = previous;
       this.onError(error);
+    } finally {
+      this.pending = false;
       this.render();
-    });
+    }
   }
 
   _scheduleMismatch() {
@@ -88,6 +110,7 @@ export class MemoryController {
       const next = this.model.applyFlip(this.state, 'p2', index);
       if (!next) break;
       this.state = next;
+      this.onAction('opponent');
       this._rememberVisible();
       this.render();
       moves += 1;
@@ -125,10 +148,14 @@ export class MemoryController {
     const incoming = message.state;
     const isInitialHostSnapshot = this.awaitingHostSnapshot;
     this.awaitingHostSnapshot = false;
+    const previous = this.state;
     if (!isInitialHostSnapshot && (incoming.restartAt < this.state.restartAt
       || (incoming.restartAt === this.state.restartAt && incoming.moveCount <= this.state.moveCount))) return false;
     window.clearTimeout(this.mismatchTimer);
     this.state = incoming;
+    if (!isInitialHostSnapshot && incoming.restartAt === previous.restartAt && incoming.moveCount > previous.moveCount) {
+      this.onAction('opponent');
+    }
     this._rememberVisible();
     this.render();
     return true;
@@ -163,7 +190,10 @@ export class MemoryController {
   }
 
   render() {
-    if (this.state) this.view.render(this.state, this.playerId, { pending: this.pending, mode: this.mode });
+    if (this.state) {
+      this.view.render(this.state, this.playerId, { pending: this.pending, mode: this.mode });
+      if (!this.pending) this.onOutcome(this.state);
+    }
   }
 
   dispose() {

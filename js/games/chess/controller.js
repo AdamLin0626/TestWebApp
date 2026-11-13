@@ -2,13 +2,15 @@ import { ChessModel, squareIndex } from './model.js';
 import { ChessView } from './view.js';
 
 export class ChessController {
-  constructor({ root, mode = '1P', playerId = 'p1', transport = null, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', transport = null, onError = () => {}, onAction = () => {}, onOutcome = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('A root element is required');
     this.root = root;
     this.mode = mode;
     this.playerId = playerId;
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.model = new ChessModel();
     this.view = new ChessView(root, { t });
     this.selectedSquare = null;
@@ -49,7 +51,13 @@ export class ChessController {
   receive(snapshot) {
     if (this.disposed || !snapshot) return null;
     try {
-      const state = this.model.loadSnapshot(snapshot);
+      const remotePlayerId = snapshot.remotePlayerId || '';
+      const payload = snapshot.snapshot || snapshot;
+      const previousFen = this.model.getSnapshot().fen;
+      const state = this.model.loadSnapshot(payload);
+      if (remotePlayerId && remotePlayerId !== this.playerId && payload.lastMove && state.fen !== previousFen) {
+        this.onAction('opponent');
+      }
       this.selectedSquare = null;
       this.pendingPromotion = null;
       this.render();
@@ -114,6 +122,7 @@ export class ChessController {
   commitMove(from, to, promotion) {
     const result = this.model.makeMove(from, to, promotion);
     if (!result) return false;
+    this.onAction('self');
     this.selectedSquare = null;
     this.pendingPromotion = null;
     this.render();
@@ -139,7 +148,9 @@ export class ChessController {
     this.aiTimer = setTimeout(() => {
       this.aiTimer = null;
       if (this.disposed || this.model.position.turn !== 'b' || this.model.getSnapshot().status.over) return;
-      this.model.chooseComputerMove();
+      const move = this.model.chooseComputerMove();
+      if (!move) return;
+      this.onAction('opponent');
       const state = this.model.getSnapshot();
       this.render();
       this.publish(state);
@@ -156,6 +167,7 @@ export class ChessController {
     const legalMoves = this.selectedSquare && this.isPlayersTurn()
       ? this.model.getLegalMoves(this.selectedSquare) : [];
     this.view.render(state, legalMoves);
+    this.onOutcome(state);
   }
 }
 

@@ -4,7 +4,7 @@ import { ConnectFourView } from './view.js';
 const delay = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
 export class ConnectFourController {
-  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, t = (value) => value } = {}) {
+  constructor({ root, mode = '1P', playerId = 'p1', playerName = 'Player', players = [], transport = null, onError = () => {}, onAction = () => {}, onOutcome = () => {}, t = (value) => value } = {}) {
     if (!root) throw new TypeError('ConnectFourController requires a root element');
     this.root = root;
     this.mode = mode === '2P' ? '2P' : '1P';
@@ -13,6 +13,8 @@ export class ConnectFourController {
     this.players = players;
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.model = new ConnectFourModel();
     this.view = new ConnectFourView(root, { t });
     this.state = null;
@@ -43,13 +45,17 @@ export class ConnectFourController {
     this.pending = true;
     this.render();
     if (this.mode === '1P') {
+      this.onAction('self');
       if (next.phase === 'playing' && next.currentPlayerId === 'p2') {
         const expected = this.state;
         this.timer = window.setTimeout(() => {
           if (this.disposed || this.state !== expected) return;
           const columnForComputer = this.model.chooseComputerMove(this.state, 'p2');
           const computerMove = this.model.applyMove(this.state, 'p2', columnForComputer);
-          if (computerMove) this.state = computerMove;
+          if (computerMove) {
+            this.state = computerMove;
+            this.onAction('opponent');
+          }
           this.pending = false;
           this.render();
         }, 380);
@@ -61,6 +67,7 @@ export class ConnectFourController {
     }
     try {
       await this._publish({ kind: 'state', state: next, retain: true });
+      this.onAction('self');
     } catch (error) {
       if (this.state === next) this.state = previous;
       this.onError(error);
@@ -84,9 +91,13 @@ export class ConnectFourController {
     const incoming = message.state;
     const isInitialHostSnapshot = this.awaitingHostSnapshot;
     this.awaitingHostSnapshot = false;
+    const previous = this.state;
     if (!isInitialHostSnapshot && (incoming.restartAt < this.state.restartAt
       || (incoming.restartAt === this.state.restartAt && incoming.moveCount <= this.state.moveCount))) return false;
     this.state = incoming;
+    if (!isInitialHostSnapshot && incoming.restartAt === previous.restartAt && incoming.moveCount > previous.moveCount) {
+      this.onAction('opponent');
+    }
     this.render();
     return true;
   }
@@ -118,7 +129,10 @@ export class ConnectFourController {
   }
 
   render() {
-    if (this.state) this.view.render(this.state, this.playerId, { pending: this.pending, mode: this.mode });
+    if (this.state) {
+      this.view.render(this.state, this.playerId, { pending: this.pending, mode: this.mode });
+      if (!this.pending) this.onOutcome(this.state);
+    }
   }
 
   dispose() {

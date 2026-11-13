@@ -11,6 +11,8 @@ export class BattleshipController {
     playerId = 'p1',
     transport = null,
     onError = () => {},
+    onAction = () => {},
+    onOutcome = () => {},
     t = (value) => value,
   } = {}) {
     if (!root) throw new TypeError('BattleshipController requires a root element');
@@ -19,6 +21,8 @@ export class BattleshipController {
     this.playerId = this.mode === '1P' ? 'p1' : (PLAYER_IDS.includes(playerId) ? playerId : 'p1');
     this.transport = transport;
     this.onError = onError;
+    this.onAction = onAction;
+    this.onOutcome = onOutcome;
     this.t = t;
     this.model = new BattleshipModel({ mode: this.mode, playerId: this.playerId });
     this.readyPlayers = new Set();
@@ -81,6 +85,7 @@ export class BattleshipController {
       if (message.playerId !== this.model.state.currentPlayerId) return false;
       const result = this.model.fire(message.index, message.playerId);
       if (!result.accepted) return false;
+      this.onAction('opponent');
       this._publish({
         kind: 'shot-result',
         playerId: this.playerId,
@@ -179,6 +184,7 @@ export class BattleshipController {
     if (this.mode === '2P') {
       const result = this.model.fire(action.index, this.playerId);
       if (result.accepted) {
+        this.onAction('self');
         this._publish({ kind: 'shot', playerId: this.playerId, index: action.index });
         this.render();
       }
@@ -187,9 +193,10 @@ export class BattleshipController {
 
     const result = this.model.fire(action.index, this.playerId);
     if (!result.accepted) return;
+    this.onAction('self');
     if (this.model.state.phase !== 'finished') {
       const computerIndex = this.model.chooseComputerShot();
-      if (computerIndex !== null) this.model.fire(computerIndex, 'p2');
+      if (computerIndex !== null && this.model.fire(computerIndex, 'p2').accepted) this.onAction('opponent');
     }
     this.render();
   }
@@ -255,6 +262,8 @@ export class BattleshipController {
   }
 
   render() {
-    this.view.render(this.model.getSnapshot({ privateFor: this.playerId }), this.playerId);
+    const snapshot = this.model.getSnapshot({ privateFor: this.playerId });
+    this.view.render(snapshot, this.playerId);
+    this.onOutcome(snapshot);
   }
 }

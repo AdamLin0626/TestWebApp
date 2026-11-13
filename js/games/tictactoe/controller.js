@@ -1,9 +1,9 @@
 export class TicTacToeController {
-  constructor({ model, getState, isLocal, publish, render, onError = () => {}, delay = 120 } = {}) {
+  constructor({ model, getState, isLocal, publish, render, onError = () => {}, onAction = () => {}, delay = 120 } = {}) {
     if (!model || typeof getState !== "function" || typeof publish !== "function") {
       throw new TypeError("TicTacToeController requires a model, state accessor, and publisher.");
     }
-    Object.assign(this, { model, getState, isLocal, publish, render, onError, delay });
+    Object.assign(this, { model, getState, isLocal, publish, render, onError, onAction, delay });
     this.pending = false;
   }
 
@@ -17,6 +17,7 @@ export class TicTacToeController {
     this.pending = true;
     this.render();
     if (this.isLocal()) {
+      this.onAction('self');
       if (nextGame.phase === "playing") {
         await new Promise((resolve) => window.setTimeout(resolve, this.delay));
         if (!this.isLocal() || state.gameState !== nextGame) {
@@ -25,7 +26,10 @@ export class TicTacToeController {
         }
         const aiCell = this.model.chooseComputerMove(state.gameState, "computer");
         const aiMove = this.model.applyMove(state.gameState, "computer", aiCell);
-        if (aiMove) state.gameState = aiMove;
+        if (aiMove) {
+          state.gameState = aiMove;
+          this.onAction('opponent');
+        }
       }
       this.pending = false;
       this.render();
@@ -33,6 +37,7 @@ export class TicTacToeController {
     }
     try {
       await this.publish(nextGame);
+      this.onAction('self');
     } catch (error) {
       if (state.gameState === nextGame) state.gameState = previousGame;
       this.onError(error);

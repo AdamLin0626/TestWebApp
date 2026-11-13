@@ -19,6 +19,8 @@ import { AirHockeyController } from "./games/airhockey/controller.js";
 import { ConnectFourController } from "./games/connectfour/controller.js";
 import { ReversiController } from "./games/reversi/controller.js";
 import { MemoryController } from "./games/memory/controller.js";
+import { GameSfx } from "./game-sfx.js";
+import { MatchmakingFlow, MATCH_GAME_TYPES } from "./matchmaking.js";
 
 const STANDALONE_GAME_TYPES = new Set(["chess", "battleship", "airhockey", "connectfour", "reversi", "memory"]);
 const STANDALONE_PROTOCOL_GAMES = new Set(["airhockey", "connectfour", "reversi", "memory"]);
@@ -30,6 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         const state = model.state;
         const view = new GameView(document, i18n.t);
         const elements = view.elements;
+        const gameSfx = new GameSfx();
+        document.addEventListener("pointerdown", () => gameSfx.unlock(), { once: true, passive: true });
+        document.addEventListener("keydown", () => gameSfx.unlock(), { once: true });
         const standaloneRoots = {
           chess: elements.chessGame,
           battleship: elements.battleshipGame,
@@ -69,10 +74,38 @@ document.addEventListener("DOMContentLoaded", async () => {
         let ticTacToeController = null;
         let dotsAndBoxesController = null;
         let yahtzeeController = null;
+        let pairingFlow = null;
+        let pendingMatchMessages = [];
+        let activeMatchId = "";
+        let lastPairRoundId = 0;
+        let outcomeTimer = 0;
+        let activeOutcomeKey = "";
+
+        const CHAT_MAX_LENGTH = 280;
+        const CHAT_HISTORY_LIMIT = 80;
+        let roomChatMessages = [];
+        let roomChatMessageIds = new Set();
+        let roomChatUnread = 0;
+        let roomChatOpen = false;
+        let roomChatNoticeTimer = 0;
 
         const roomTopic = () => model.roomTopic();
         const playerTopic = (id) => model.playerTopic(id);
+        const gameTopic = (gameType = state.gameType) => `${roomTopic()}/games/${gameType}/${activeMatchId || "unmatched"}`;
         const secretKey = () => model.secretKey();
+        const gameNames = {
+          "1a2b": "1A2B",
+          tictactoe: "Tic Tac Toe",
+          dotsandboxes: "點格棋",
+          yahtzee: "快艇骰子",
+          chess: "Chess",
+          battleship: "Battleship",
+          airhockey: "Air Hockey",
+          connectfour: "Connect Four",
+          reversi: "Reversi",
+          memory: "Memory Match"
+        };
+        const playActionSound = (actor) => gameSfx.play(actor === "opponent" ? "opponent" : "self");
         const setConnection = (connectionState, text) => {
           view.setConnection(connectionState, i18n.t(text));
         };
@@ -80,8 +113,20 @@ document.addEventListener("DOMContentLoaded", async () => {
           view.setBanner(i18n.t(message), kind);
         };
         function setMode(nextMode) {
-          state.mode = nextMode;
-          view.setMode(state.mode);
+          if (nextMode === "1P") {
+            if (state.mode === "2P" && (client || state.joined)) returnHome();
+            state.mode = "1P";
+            state.gameType = "1a2b";
+            view.setMode("1P");
+            view.renderPairStatus(null);
+            view.renderMatchmaking(null, gameNames);
+            return;
+          }
+          state.mode = "2P";
+          state.gameType = "";
+          view.setMode("2P");
+          if (state.joined) updateRoomWaiting();
+          else showPairingRoom();
         }
 
         function disposeStandalone(clearPending = true) {
@@ -148,7 +193,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               } else {
                 payload = message;
               }
-              return publish(`${roomTopic()}/game`, payload, retain);
+              return publish(gameTopic(gameType), payload, retain);
             }
           } : null;
           const options = {
@@ -158,6 +203,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             playerName: state.playerName,
             players,
             transport,
+            onAction: playActionSound,
+            onOutcome: (snapshot) => handleOutcome(gameType, snapshot),
             t: i18n.t,
             onError: (error) => {
               elements.standaloneError.textContent = i18n.t("Could not update the game: {error}", {
@@ -172,7 +219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           standaloneController.start();
           for (const data of pendingStandaloneMessages.splice(0)) {
             if (data.playerId === standalonePlayerId) continue;
-            const message = gameType === "chess" ? data.snapshot
+            const message = gameType === "chess" ? { snapshot: data.snapshot, remotePlayerId: data.playerId }
               : STANDALONE_PROTOCOL_GAMES.has(gameType)
                 ? { ...data.snapshot, remotePlayerId: data.playerId }
                 : data;
@@ -182,19 +229,173 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         function selectStandaloneGame(gameType) {
-          state.gameType = gameType;
+          selectGame(gameType);
+        }
+
+        function selectGame(gameType) {
           localTicTacToe = false;
           localDotsBoxes = false;
           if (state.mode === "1P") {
-            startStandaloneGame(gameType, "1P");
+            state.gameType = gameType;
+            clearOutcome();
+            if (gameType === "1a2b") startSoloGame();
+            else if (gameType === "tictactoe") startTicTacToeSoloGame();
+            else if (gameType === "dotsandboxes") startDotsAndBoxesSoloGame();
+            else if (gameType === "yahtzee") startYahtzeeGame();
+            else startStandaloneGame(gameType, "1P");
             return;
           }
-          view.setGameType(gameType, state.mode);
+          if (state.joined && pairingFlow && getPlayers().length === 2) {
+            pairingFlow.chooseGame(gameType);
+            return;
+          }
+          showPairingRoom();
+        }
+
+        function showPairingRoom() {
+          if (state.joined) {
+            updateRoomWaiting();
+            return;
+          }
+          state.gameType = "";
+          state.mode = "2P";
+          view.setMode("2P");
+          view.setPairingRoom();
+          elements.setup.hidden = true;
+          elements.game.hidden = true;
           elements.roomActions.hidden = false;
           elements.roomWaiting.hidden = true;
           elements.lobby.hidden = false;
           elements.roomError.textContent = "";
           i18n.apply();
+        }
+
+        function ensurePairingFlow() {
+          const players = getPlayers();
+          if (!state.joined || players.length !== 2 || !state.playerId) return;
+          const opponent = players.find((player) => player.id !== state.playerId);
+          const hostId = isRoomHost ? state.playerId : opponent?.id;
+          if (!opponent || !hostId) return;
+          if (!pairingFlow || pairingFlow.playerId !== state.playerId || pairingFlow.hostId !== hostId) {
+            pairingFlow = new MatchmakingFlow({
+              playerId: state.playerId,
+              hostId,
+              publish: (path, message, retain) => publish(`${roomTopic()}/${path}`, message, retain).catch((error) => {
+                setBanner(`Could not update match choices: ${error.message}`, "error");
+              }),
+              onChange: (snapshot) => {
+                const previousRound = lastPairRoundId;
+                if (snapshot.roundId) lastPairRoundId = snapshot.roundId;
+                if (previousRound && snapshot.roundId && previousRound !== snapshot.roundId &&
+                    activeMatchId && String(snapshot.roundId) !== activeMatchId) {
+                  returnToPairLobby({ keepFlow: true });
+                }
+                const partner = getPlayers().find((player) => player.id !== state.playerId);
+                view.renderPairStatus(snapshot, state.playerName, partner?.name);
+                view.renderMatchmaking(snapshot, gameNames);
+              },
+              onResolve: (result) => {
+                if (!state.joined || getPlayers().length !== 2 || !MATCH_GAME_TYPES.includes(result.gameType)) return;
+                activeMatchId = String(result.roundId);
+                clearOutcome();
+                startPairedGame(result.gameType);
+              }
+            });
+          }
+          pairingFlow.setOpponent(opponent.id);
+          flushPendingMatchMessages();
+        }
+
+        function flushPendingMatchMessages() {
+          if (!pairingFlow || !pendingMatchMessages.length) return;
+          const priority = (message) => message.topic === "match/session" ? 0
+            : message.topic.startsWith("match/players/") ? 1 : 2;
+          const queued = pendingMatchMessages.splice(0).sort((left, right) =>
+            priority(left) - priority(right) ||
+            Number(left.data?.roundId || 0) - Number(right.data?.roundId || 0) ||
+            Number(left.data?.gestureRound || 0) - Number(right.data?.gestureRound || 0)
+          );
+          for (const message of queued) pairingFlow.receive(message.topic, message.data);
+        }
+
+        function startPairedGame(gameType) {
+          if (!state.joined || getPlayers().length !== 2 || !MATCH_GAME_TYPES.includes(gameType)) return;
+          clearOutcome();
+          disposeStandalone(false);
+          state.gameType = gameType;
+          state.mode = "2P";
+          state.soloMode = false;
+          state.gameState = null;
+          state.guesses = {};
+          state.results = {};
+          state.handledResults = new Set();
+          state.mySecret = "";
+          sessionStorage.removeItem(secretKey());
+          const me = state.players[state.playerId];
+          if (me) {
+            me.ready = false;
+            publish(playerTopic(state.playerId), me).catch((error) =>
+              setBanner(`Could not reset your ready status: ${error.message}`, "error")
+            );
+          }
+          localTicTacToe = false;
+          localDotsBoxes = false;
+          pendingYahtzeeMove = false;
+          elements.secret.value = "";
+          elements.guess.value = "";
+          elements.setup.hidden = true;
+          elements.lobby.hidden = true;
+          elements.page.classList.add("is-playing");
+          elements.game.hidden = false;
+          elements.game.dataset.mode = "2P";
+          elements.game.dataset.game = gameType;
+          elements.standaloneError.hidden = true;
+          elements.gameGrid.hidden = gameType !== "1a2b";
+          elements.ticTacToeGame.hidden = gameType !== "tictactoe";
+          elements.dotsAndBoxesGame.hidden = gameType !== "dotsandboxes";
+          elements.yahtzeeGame.hidden = gameType !== "yahtzee";
+          elements.playersCard.hidden = gameType !== "1a2b";
+          elements.secretCard.hidden = gameType !== "1a2b";
+          elements.soloSecret.hidden = true;
+          view.setGameHeader(gameType, "2P");
+          for (const [type, root] of Object.entries(standaloneRoots)) root.hidden = type !== gameType;
+          render();
+          maybeStartGame();
+          window.scrollTo(0, 0);
+        }
+
+        function returnToPairLobby({ keepFlow = false } = {}) {
+          if (!state.joined) returnHome();
+          else {
+            disposeStandalone();
+            clearOutcome();
+            activeMatchId = "";
+            state.mode = "2P";
+            state.gameType = "";
+            state.gameState = null;
+            state.soloMode = false;
+            localTicTacToe = false;
+            localDotsBoxes = false;
+            pendingYahtzeeMove = false;
+            elements.game.hidden = true;
+            elements.setup.hidden = false;
+            elements.lobby.hidden = true;
+            elements.page.classList.remove("is-playing");
+            elements.playersCard.hidden = false;
+            elements.secretCard.hidden = false;
+            elements.soloSecret.hidden = true;
+            elements.gameGrid.hidden = false;
+            view.setMode("2P");
+            if (pairingFlow && !keepFlow) {
+              if (pairingFlow.isHost && getPlayers().length === 2) pairingFlow.startRound();
+              else pairingFlow.reset();
+            }
+            const snapshot = pairingFlow?.snapshot() || null;
+            const partner = getPlayers().find((player) => player.id !== state.playerId);
+            view.renderPairStatus(snapshot, state.playerName, partner?.name);
+            view.renderMatchmaking(snapshot, gameNames);
+          }
+          window.scrollTo(0, 0);
         }
 
         async function submitDotsMove(edge) {
@@ -337,23 +538,25 @@ document.addEventListener("DOMContentLoaded", async () => {
           model: a1b2Model,
           getState: () => state,
           render: () => render(),
-          publish: (path, message) => publish(`${roomTopic()}/${path}`, message),
+          publish: (path, message) => publish(`${gameTopic("1a2b")}/${path}`, message),
           onBanner: (message, kind) => setBanner(message, kind)
         });
         ticTacToeController = new TicTacToeController({
           model: ticTacToeModel,
           getState: () => state,
           isLocal: () => localTicTacToe,
-          publish: (message) => publish(`${roomTopic()}/game`, message),
+          publish: (message) => publish(gameTopic("tictactoe"), message),
           render: () => render(),
+          onAction: playActionSound,
           onError: (error) => { elements.ticTacToeStatus.textContent = `Could not send your move: ${error.message}`; }
         });
         dotsAndBoxesController = new DotsAndBoxesController({
           model: dotsAndBoxesModel,
           getState: () => state,
           isLocal: () => localDotsBoxes,
-          publish: (message) => publish(`${roomTopic()}/game`, message),
+          publish: (message) => publish(gameTopic("dotsandboxes"), message),
           render: () => render(),
+          onAction: playActionSound,
           onError: (error) => { elements.dotsStatus.textContent = `Could not send your move: ${error.message}`; }
         });
         yahtzeeController = new YahtzeeController({
@@ -374,11 +577,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             setBanner("The MQTT library did not load. Check your connection and refresh the page.", "error");
             return;
           }
+          state.mode = "2P";
+          state.gameType = "";
           state.room = code.toUpperCase();
           state.playerName = model.validName(elements.name.value) || "Player";
-          const playerKey = state.gameType === "1a2b"
-            ? `fourfold.player.${state.room}`
-            : `fourfold.player.${state.gameType}.${state.room}`;
+          const playerKey = `fourfold.player.${state.room}`;
           state.playerId = localStorage.getItem(playerKey) || crypto.randomUUID().replaceAll("-", "").slice(0, 12);
           localStorage.setItem(playerKey, state.playerId);
           state.mySecret = sessionStorage.getItem(secretKey()) || "";
@@ -403,6 +606,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           });
           client.on("connect", () => {
             setConnection("connected", "Connected");
+            updateRoomChatStatus();
             client.subscribe(`${roomTopic()}/#`, { qos: 1 }, (error) => {
               if (error) {
                 elements.roomError.textContent = "Could not join this room.";
@@ -420,10 +624,17 @@ document.addEventListener("DOMContentLoaded", async () => {
               }
             });
           });
-          client.on("reconnect", () => setConnection("connecting", "Reconnecting…"));
-          client.on("offline", () => setConnection("connecting", "Reconnecting…"));
+          client.on("reconnect", () => {
+            setConnection("connecting", "Reconnecting…");
+            updateRoomChatStatus();
+          });
+          client.on("offline", () => {
+            setConnection("connecting", "Reconnecting…");
+            updateRoomChatStatus();
+          });
           client.on("close", () => {
             if (state.joined) setConnection("connecting", "Connection lost");
+            updateRoomChatStatus();
           });
           client.on("error", (error) => {
             setConnection("error", "Connection error");
@@ -436,6 +647,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             } else {
               setBanner(message, "error");
             }
+            updateRoomChatStatus();
           });
           client.on("message", onMessage);
         }
@@ -457,7 +669,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             id: state.playerId,
             name: state.playerName,
             online: true,
-            ready: state.gameType !== "1a2b" || Boolean(previous.ready),
+            ready: false,
             joinedAt: previous.joinedAt || Date.now()
           };
           try {
@@ -474,18 +686,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             elements.standaloneError.hidden = true;
             state.soloMode = false;
             elements.game.dataset.mode = "2P";
-            elements.game.dataset.game = state.gameType;
-            view.setGameHeader(state.gameType, "2P");
-            const isBoardGame = state.gameType !== "1a2b";
-            elements.playersCard.hidden = isBoardGame;
-            elements.secretCard.hidden = state.gameType !== "1a2b";
+            elements.game.dataset.game = "";
+            view.setPairingRoom();
+            elements.playersCard.hidden = true;
+            elements.secretCard.hidden = true;
             elements.soloSecret.hidden = true;
-            setBanner(isBoardGame
-              ? "Waiting for a friend to join."
-              : "Set your secret code. Once both players are ready, take turns guessing each other’s code.");
-            render();
+            setBanner("Room connected. Waiting for your friend to join.");
             updateRoomWaiting();
-            maybeStartGame();
+            ensurePairingFlow();
+            updateRoomChatStatus();
+            view.renderChatMessages(roomChatMessages, state.playerId);
+            view.updateChatCount(elements.chatInput.value.length, CHAT_MAX_LENGTH);
           } catch (error) {
             elements.roomError.textContent = "Could not join the room. Try again.";
             state.joining = false;
@@ -510,15 +721,33 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!data.online && data.id !== state.playerId) state.players[data.id].ready = Boolean(previous.ready);
             renderPlayers();
             updateRoomWaiting();
+            updateRoomChatStatus();
             maybeStartGame();
-            if (state.gameType !== "1a2b") render();
+            if (state.gameType) render();
             return;
           }
-          if (parts[0] === "game" && data?.game === state.gameType &&
+          if (parts[0] === "chat" && parts[1] === "messages" && parts.length === 2) {
+            receiveRoomChatMessage(data);
+            return;
+          }
+          if (parts[0] === "match") {
+            if (!pairingFlow ||
+                (relative.startsWith("match/players/") && !pairingFlow.ready) ||
+                (relative === "match/result" && Number(data.roundId) > pairingFlow.roundId)) {
+              pendingMatchMessages.push({ topic: relative, data });
+            } else {
+              pairingFlow.receive(relative, data);
+              if (relative === "match/session" && pairingFlow.ready) flushPendingMatchMessages();
+            }
+            return;
+          }
+          if (parts[0] !== "games" || parts[1] !== state.gameType || parts[2] !== activeMatchId) return;
+          const gameParts = parts.slice(3);
+          if (gameParts.length === 0 && data?.game === state.gameType &&
             STANDALONE_GAME_TYPES.has(state.gameType)) {
             if (data.playerId === standalonePlayerId) return;
             if (standaloneSubscriptions.size) {
-              const message = state.gameType === "chess" ? data.snapshot
+              const message = state.gameType === "chess" ? { snapshot: data.snapshot, remotePlayerId: data.playerId }
                 : STANDALONE_PROTOCOL_GAMES.has(state.gameType)
                   ? { ...data.snapshot, remotePlayerId: data.playerId }
                   : data;
@@ -528,7 +757,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             return;
           }
-          if (parts[0] === "game" && data && typeof data.turn === "number") {
+          if (gameParts.length === 0 && data && typeof data.turn === "number") {
             const currentEpoch = Number(state.gameState?.restartAt || 0);
             const incomingEpoch = Number(data.restartAt || 0);
             const isRestart = incomingEpoch > currentEpoch;
@@ -545,30 +774,34 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             return;
           }
-          if (state.gameType === "tictactoe" && parts[0] === "game" &&
+          if (state.gameType === "tictactoe" && gameParts.length === 0 &&
             data && Array.isArray(data.board) && typeof data.moveCount === "number") {
             const currentEpoch = Number(state.gameState?.restartAt || 0);
             const incomingEpoch = Number(data.restartAt || 0);
-            if (!state.gameState || incomingEpoch > currentEpoch ||
-              (incomingEpoch === currentEpoch && data.moveCount > state.gameState.moveCount)) {
+            const previousGame = state.gameState;
+            if (!previousGame || incomingEpoch > currentEpoch ||
+              (incomingEpoch === currentEpoch && data.moveCount > previousGame.moveCount)) {
               state.gameState = data;
+              if (previousGame && incomingEpoch === currentEpoch && previousGame.activePlayerId !== state.playerId) playActionSound("opponent");
               render();
             }
             return;
           }
-          if (state.gameType === "dotsandboxes" && parts[0] === "game" &&
+          if (state.gameType === "dotsandboxes" && gameParts.length === 0 &&
             dotsAndBoxesModel.isGame(data) &&
             typeof data.moveCount === "number") {
             const currentEpoch = Number(state.gameState?.restartAt || 0);
             const incomingEpoch = Number(data.restartAt || 0);
-            if (!state.gameState || incomingEpoch > currentEpoch ||
-              (incomingEpoch === currentEpoch && data.moveCount > state.gameState.moveCount)) {
+            const previousGame = state.gameState;
+            if (!previousGame || incomingEpoch > currentEpoch ||
+              (incomingEpoch === currentEpoch && data.moveCount > previousGame.moveCount)) {
               state.gameState = data;
+              if (previousGame && incomingEpoch === currentEpoch && previousGame.activePlayerId !== state.playerId) playActionSound("opponent");
               render();
             }
             return;
           }
-          if (state.gameType === "yahtzee" && parts[0] === "game" &&
+          if (state.gameType === "yahtzee" && gameParts.length === 0 &&
             data?.mode === "2P" && Array.isArray(data.players) && data.scorecards &&
             typeof data.moveCount === "number") {
             const current = state.gameState;
@@ -577,14 +810,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!current || incomingEpoch > currentEpoch ||
               (incomingEpoch === currentEpoch && data.moveCount > current.moveCount)) {
               state.gameState = data;
+              if (current && incomingEpoch === currentEpoch && current.activePlayerId !== state.playerId) playActionSound("opponent");
               render();
             }
             return;
           }
-          if (parts[0] === "moves" && parts.length === 3) {
-            const turn = Number(parts[1]);
+          if (gameParts[0] === "moves" && gameParts.length === 3) {
+            const turn = Number(gameParts[1]);
             if (!Number.isInteger(turn) || turn < 1) return;
-            if (parts[2] === "guess" && typeof data.guess === "string" && data.by) {
+            if (gameParts[2] === "guess" && typeof data.guess === "string" && data.by) {
+              if (!state.guesses[turn] && data.by !== state.playerId) playActionSound("opponent");
               state.guesses[turn] = data;
               render();
               if (data.to === state.playerId && state.gameState?.turn === turn && state.mySecret) {
@@ -592,7 +827,7 @@ document.addEventListener("DOMContentLoaded", async () => {
               } else if (data.to === state.playerId && !state.mySecret) {
                 setBanner("Your secret was lost when this page reloaded. Re-enter it below to continue.", "error");
               }
-            } else if (parts[2] === "result" && typeof data.a === "number" && typeof data.b === "number") {
+            } else if (gameParts[2] === "result" && typeof data.a === "number" && typeof data.b === "number") {
               state.results[turn] = data;
               render();
             }
@@ -603,21 +838,160 @@ document.addEventListener("DOMContentLoaded", async () => {
           return model.getPlayers();
         }
 
+        function updateRoomChatStatus() {
+          const available = state.mode === "2P" && state.joined && Boolean(state.room);
+          view.setChatAvailable(available);
+          if (!available) {
+            roomChatOpen = false;
+            view.setChatSendEnabled(false);
+            view.setChatConnection("");
+            return;
+          }
+          const players = getPlayers();
+          const connected = Boolean(client?.connected);
+          view.setChatSendEnabled(connected && players.length === 2);
+          let status = "";
+          if (!connected) status = "Reconnecting to the room…";
+          else if (players.length < 2) {
+            const hasOpponent = Object.values(state.players).some((player) => player.id !== state.playerId);
+            status = hasOpponent ? "Waiting for your friend to reconnect." : "Waiting for your friend to join.";
+          }
+          view.setChatConnection(status ? i18n.t(status) : "");
+        }
+
+        function setRoomChatOpen(open) {
+          roomChatOpen = Boolean(open) && state.mode === "2P" && state.joined;
+          view.setChatOpen(roomChatOpen);
+          if (roomChatOpen) {
+            roomChatUnread = 0;
+            view.setChatUnread(0);
+            if (roomChatNoticeTimer) window.clearTimeout(roomChatNoticeTimer);
+            roomChatNoticeTimer = 0;
+            view.hideChatNotification();
+            window.requestAnimationFrame(() => elements.chatInput.focus());
+          } else if (state.mode === "2P" && state.joined) {
+            elements.chatLauncher.focus();
+          }
+        }
+
+        function addRoomChatMessage(message) {
+          if (!message?.id || roomChatMessageIds.has(message.id)) return false;
+          roomChatMessageIds.add(message.id);
+          roomChatMessages.push(message);
+          while (roomChatMessages.length > CHAT_HISTORY_LIMIT) {
+            const removed = roomChatMessages.shift();
+            roomChatMessageIds.delete(removed.id);
+          }
+          view.renderChatMessages(roomChatMessages, state.playerId);
+          return true;
+        }
+
+        function receiveRoomChatMessage(data) {
+          if (!state.joined || state.mode !== "2P" || data?.type !== "chat" ||
+              typeof data.id !== "string" || data.id.length > 80 || typeof data.text !== "string" ||
+              typeof data.playerId !== "string" || data.playerId === state.playerId ||
+              data.text.length > CHAT_MAX_LENGTH) return;
+          const sender = getPlayers().find((player) => player.id === data.playerId);
+          const text = data.text.trim();
+          if (!sender || !text) return;
+          const sentAt = typeof data.sentAt === "number" && Number.isFinite(data.sentAt) &&
+            Math.abs(data.sentAt) <= 8640000000000000 ? data.sentAt : Date.now();
+          const message = {
+            id: data.id,
+            playerId: sender.id,
+            playerName: sender.name || "Opponent",
+            text,
+            sentAt
+          };
+          if (!addRoomChatMessage(message) || roomChatOpen) return;
+          roomChatUnread += 1;
+          view.setChatUnread(roomChatUnread);
+          view.showChatNotification({ name: message.playerName, text: message.text });
+          if (roomChatNoticeTimer) window.clearTimeout(roomChatNoticeTimer);
+          roomChatNoticeTimer = window.setTimeout(() => {
+            roomChatNoticeTimer = 0;
+            view.hideChatNotification();
+          }, 4800);
+        }
+
+        async function sendRoomChatMessage() {
+          const text = elements.chatInput.value.trim();
+          if (!text || text.length > CHAT_MAX_LENGTH || !state.joined || state.mode !== "2P" ||
+              !client?.connected || getPlayers().length !== 2) return;
+          const roomCode = state.room;
+          const playerId = state.playerId;
+          const message = {
+            type: "chat",
+            id: crypto.randomUUID(),
+            playerId,
+            text,
+            sentAt: Date.now()
+          };
+          view.setChatSendEnabled(false);
+          try {
+            await publish(`${roomTopic()}/chat/messages`, message, false);
+            if (!state.joined || state.mode !== "2P" || state.room !== roomCode || state.playerId !== playerId) return;
+            addRoomChatMessage({ ...message, playerName: state.playerName });
+            elements.chatInput.value = "";
+            view.updateChatCount(0, CHAT_MAX_LENGTH);
+            view.setChatError("");
+          } catch {
+            view.setChatError(i18n.t("Could not send your message. Please try again."));
+          } finally {
+            updateRoomChatStatus();
+          }
+        }
+
+        function clearRoomChat() {
+          if (roomChatNoticeTimer) window.clearTimeout(roomChatNoticeTimer);
+          roomChatNoticeTimer = 0;
+          roomChatMessages = [];
+          roomChatMessageIds.clear();
+          roomChatUnread = 0;
+          roomChatOpen = false;
+          view.setChatAvailable(false);
+          view.setChatOpen(false);
+          view.setChatUnread(0);
+          view.setChatConnection("");
+          view.setChatSendEnabled(false);
+          view.setChatError("");
+          view.updateChatCount(0, CHAT_MAX_LENGTH);
+          view.renderChatMessages([], state.playerId);
+        }
+
         function updateRoomWaiting() {
           if (!state.joined) return;
           const onlinePlayers = getPlayers();
-          if (onlinePlayers.length < 2) {
-            elements.roomWaitingStatus.textContent = "Waiting for a player to join your room.";
+          if (state.gameType) {
+            if (onlinePlayers.length < 2) setBanner("Waiting for your friend to reconnect.");
             return;
           }
+          if (onlinePlayers.length < 2) {
+            elements.setup.hidden = true;
+            elements.lobby.hidden = false;
+            elements.game.hidden = true;
+            elements.page.classList.remove("is-playing");
+            elements.roomActions.hidden = true;
+            elements.roomWaiting.hidden = false;
+            elements.roomWaitingCode.textContent = state.room;
+            elements.roomWaitingStatus.textContent = "Waiting for a player to join your room.";
+            view.renderPairStatus(null);
+            return;
+          }
+          elements.setup.hidden = false;
           elements.lobby.hidden = true;
-          elements.game.hidden = false;
-          elements.page.classList.add("is-playing");
-          render();
+          elements.game.hidden = true;
+          elements.page.classList.remove("is-playing");
+          elements.roomWaiting.hidden = true;
+          ensurePairingFlow();
+          const snapshot = pairingFlow?.snapshot() || null;
+          const partner = onlinePlayers.find((player) => player.id !== state.playerId);
+          view.renderPairStatus(snapshot, state.playerName, partner?.name);
+          i18n.apply();
         }
 
         function maybeStartGame() {
-          if (!state.joined || state.gameState || getPlayers().length !== 2) return;
+          if (!state.joined || !state.gameType || state.gameState || getPlayers().length !== 2) return;
           const activePlayers = getPlayers();
           if (STANDALONE_GAME_TYPES.has(state.gameType)) {
             if (!standaloneController) startStandaloneGame(state.gameType, "2P");
@@ -626,17 +1000,18 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (state.gameType === "yahtzee") {
             if (!isRoomHost) return;
             state.gameState = yahtzeeModel.createMatch(activePlayers);
-            publish(`${roomTopic()}/game`, state.gameState).catch((error) =>
+            publish(gameTopic("yahtzee"), state.gameState).catch((error) =>
               setBanner(`Could not start the game: ${error.message}`, "error")
             );
             render();
             return;
           }
           if (state.gameType === "tictactoe" || state.gameType === "dotsandboxes") {
+            if (!isRoomHost) return;
             state.gameState = state.gameType === "dotsandboxes"
               ? dotsAndBoxesModel.createGame(activePlayers)
               : ticTacToeModel.createGame(activePlayers);
-            publish(`${roomTopic()}/game`, state.gameState)
+            publish(gameTopic(state.gameType), state.gameState)
               .catch((error) => {
                 const status = state.gameType === "dotsandboxes" ? elements.dotsStatus : elements.ticTacToeStatus;
                 status.textContent = `Could not start the game: ${error.message}`;
@@ -644,10 +1019,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             render();
             return;
           }
+          if (state.gameType !== "1a2b" || !isRoomHost) return;
           if (!activePlayers.every((player) => player.ready)) return;
           state.gameState = { phase: "playing", turn: 1, activePlayerId: activePlayers[0].id, startedAt: Date.now() };
           setBanner("Both players are ready. The first turn starts now.");
-          publish(`${roomTopic()}/game`, state.gameState).catch((error) => setBanner(`Could not start the game: ${error.message}`, "error"));
+          publish(gameTopic("1a2b"), state.gameState).catch((error) => setBanner(`Could not start the game: ${error.message}`, "error"));
           render();
         }
 
@@ -656,8 +1032,107 @@ document.addEventListener("DOMContentLoaded", async () => {
           i18n.apply();
         }
 
+        function clearOutcome() {
+          if (outcomeTimer) window.clearTimeout(outcomeTimer);
+          outcomeTimer = 0;
+          activeOutcomeKey = "";
+          view.hideResult();
+        }
+
+        function readOutcome(gameType, snapshot) {
+          if (!snapshot) return null;
+          if (gameType === "1a2b" && snapshot.phase === "won") {
+            return { winnerId: snapshot.winnerId || state.playerId, draw: false };
+          }
+          if (gameType === "tictactoe" && snapshot.phase === "won") return { winnerId: snapshot.winnerId || "", draw: false };
+          if (gameType === "dotsandboxes" && snapshot.phase === "won") return { winnerId: snapshot.winnerId || "", draw: !snapshot.winnerId };
+          if (gameType === "yahtzee" && snapshot.phase === "won") {
+            return state.mode === "1P" ? { completion: true } : { winnerId: snapshot.winnerId || "", draw: !snapshot.winnerId };
+          }
+          if (gameType === "chess" && snapshot.status?.over) {
+            return { winnerId: snapshot.status.winner || "", draw: !snapshot.status.winner };
+          }
+          if (gameType === "battleship" && snapshot.phase === "finished") {
+            return { winnerId: snapshot.winner || "", draw: !snapshot.winner };
+          }
+          if (["airhockey", "connectfour", "reversi", "memory"].includes(gameType) &&
+              ["finished", "won"].includes(snapshot.phase)) {
+            return { winnerId: snapshot.winnerId || "", draw: !snapshot.winnerId };
+          }
+          return null;
+        }
+
+        function winnerName(gameType, winnerId) {
+          if (!winnerId) return "";
+          if (gameType === "chess") {
+            const seat = winnerId === "w" || winnerId === "p1" ? "p1" : "p2";
+            if (state.mode === "1P") return seat === "p1" ? state.playerName : "Computer";
+            if (seat === standalonePlayerId) return state.playerName;
+            return getPlayers()[seat === "p1" ? 0 : 1]?.name || "Opponent";
+          }
+          if (STANDALONE_GAME_TYPES.has(gameType)) {
+            const seat = winnerId === "p2" ? "p2" : "p1";
+            if (state.mode === "1P") return seat === "p1" ? state.playerName : "Computer";
+            if (seat === standalonePlayerId) return state.playerName;
+            return getPlayers()[seat === "p1" ? 0 : 1]?.name || "Opponent";
+          }
+          return state.players[winnerId]?.name ||
+            (winnerId === "computer" || winnerId === "p2" ? "Computer" : "Opponent");
+        }
+
+        function isLocalWinner(gameType, winnerId) {
+          if (!winnerId) return false;
+          if (gameType === "chess") {
+            const seat = winnerId === "w" || winnerId === "p1" ? "p1" : "p2";
+            return state.mode === "1P" ? seat === "p1" : seat === standalonePlayerId;
+          }
+          if (STANDALONE_GAME_TYPES.has(gameType)) {
+            const seat = winnerId === "p2" ? "p2" : "p1";
+            return state.mode === "1P" ? seat === "p1" : seat === standalonePlayerId;
+          }
+          if (winnerId === state.playerId) return true;
+          return state.mode === "1P" && ["local", "solo"].includes(winnerId);
+        }
+
+        function handleOutcome(gameType, snapshot) {
+          const outcome = readOutcome(gameType, snapshot);
+          if (!outcome) {
+            if (activeOutcomeKey) clearOutcome();
+            return;
+          }
+          const epoch = snapshot.restartAt ?? snapshot.startedAt ?? snapshot.fen ?? snapshot.turn ?? 0;
+          const progress = snapshot.moveCount ?? snapshot.turn ?? snapshot.status?.reason ?? "end";
+          const key = `${gameType}:${activeMatchId || "solo"}:${epoch}:${progress}:${outcome.winnerId || "draw"}`;
+          if (key === activeOutcomeKey) return;
+          clearOutcome();
+          activeOutcomeKey = key;
+          let title;
+          let detail;
+          if (outcome.completion) {
+            title = i18n.t("Game complete");
+            detail = i18n.t("Thanks for playing.");
+          } else if (outcome.draw) {
+            title = i18n.t("It's a draw!");
+            detail = i18n.t("The match is complete.");
+          } else {
+            const name = winnerName(gameType, outcome.winnerId);
+            title = isLocalWinner(gameType, outcome.winnerId)
+              ? i18n.t("You win!")
+              : i18n.t("{name} wins!", { name: i18n.t(name) });
+            detail = i18n.t("Winner: {name}", { name: i18n.t(name) });
+          }
+          view.showResult({ title, detail });
+          outcomeTimer = window.setTimeout(() => {
+            if (activeOutcomeKey === key) view.showResultActions();
+          }, 2000);
+        }
+
         function render() {
+          if (!state.gameType) return;
           view.setGameHeader(state.gameType, state.mode);
+          if (state.gameState && !STANDALONE_GAME_TYPES.has(state.gameType)) {
+            handleOutcome(state.gameType, state.gameState);
+          }
           if (state.gameType === "sudoku" || STANDALONE_GAME_TYPES.has(state.gameType)) {
             elements.gameGrid.hidden = true;
             elements.ticTacToeGame.hidden = true;
@@ -717,13 +1192,15 @@ document.addEventListener("DOMContentLoaded", async () => {
           const previousGame = state.gameState;
           state.gameState = nextGame;
           if (nextGame.mode !== "2P" || !state.room) {
+            playActionSound("self");
             render();
             return;
           }
           pendingYahtzeeMove = true;
           render();
           try {
-            await publish(`${roomTopic()}/game`, nextGame);
+            await publish(gameTopic("yahtzee"), nextGame);
+            playActionSound("self");
           } catch (error) {
             if (state.gameState === nextGame) state.gameState = previousGame;
             elements.yahtzeeHint.textContent = i18n.t("Could not update the game: {error}", {
@@ -775,7 +1252,8 @@ document.addEventListener("DOMContentLoaded", async () => {
           elements.guess.value = "";
           render();
           try {
-            await publish(`${roomTopic()}/moves/${turn}/guess`, guess);
+            await publish(`${gameTopic("1a2b")}/moves/${turn}/guess`, guess);
+            playActionSound("self");
           } catch (error) {
             delete state.guesses[turn];
             setBanner(`Could not send your guess: ${error.message}`, "error");
@@ -785,6 +1263,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         function submitSoloGuess(value) {
           a1b2Controller.submitSoloGuess(value);
+          playActionSound("self");
           elements.guess.value = "";
         }
 
@@ -795,50 +1274,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         elements.modeOne.addEventListener("click", () => setMode("1P"));
         elements.modeTwo.addEventListener("click", () => setMode("2P"));
-        elements.gameTile.addEventListener("click", () => {
-          state.gameType = "1a2b";
-          view.setGameType(state.gameType, state.mode);
-          if (state.mode === "1P") startSoloGame();
-          else {
-            elements.roomActions.hidden = false;
-            elements.roomWaiting.hidden = true;
-            elements.lobby.hidden = false;
-            elements.roomError.textContent = "";
-          }
-        });
-        elements.ticTacToeTile.addEventListener("click", () => {
-          state.gameType = "tictactoe";
-          localTicTacToe = false;
-          if (state.mode === "1P") {
-            startTicTacToeSoloGame();
-            return;
-          }
-          view.setGameType(state.gameType, state.mode);
-          elements.roomActions.hidden = false;
-          elements.roomWaiting.hidden = true;
-          elements.lobby.hidden = false;
-          elements.roomError.textContent = "";
-        });
-        elements.dotsAndBoxesTile.addEventListener("click", () => {
-          state.gameType = "dotsandboxes";
-          localDotsBoxes = false;
-          if (state.mode === "1P") {
-            startDotsAndBoxesSoloGame();
-            return;
-          }
-          view.setGameType(state.gameType, state.mode);
-          elements.roomActions.hidden = false;
-          elements.roomWaiting.hidden = true;
-          elements.lobby.hidden = false;
-          elements.roomError.textContent = "";
-        });
+        elements.gameTile.addEventListener("click", () => selectGame("1a2b"));
+        elements.ticTacToeTile.addEventListener("click", () => selectGame("tictactoe"));
+        elements.dotsAndBoxesTile.addEventListener("click", () => selectGame("dotsandboxes"));
         elements.chessTile.addEventListener("click", () => selectStandaloneGame("chess"));
         elements.battleshipTile.addEventListener("click", () => selectStandaloneGame("battleship"));
         elements.airHockeyTile.addEventListener("click", () => selectStandaloneGame("airhockey"));
         elements.connectFourTile.addEventListener("click", () => selectStandaloneGame("connectfour"));
         elements.reversiTile.addEventListener("click", () => selectStandaloneGame("reversi"));
         elements.memoryTile.addEventListener("click", () => selectStandaloneGame("memory"));
-        elements.yahtzeeTile.addEventListener("click", startYahtzeeGame);
+        elements.yahtzeeTile.addEventListener("click", () => selectGame("yahtzee"));
         elements.create.addEventListener("click", () => {
           isRoomHost = true;
           if (!window.mqtt) {
@@ -930,7 +1375,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
         });
         function returnHome() {
+          clearOutcome();
+          clearRoomChat();
           disposeStandalone();
+          pairingFlow = null;
+          pendingMatchMessages = [];
+          activeMatchId = "";
+          lastPairRoundId = 0;
           if (client) {
             const currentClient = client;
             if (state.joined && currentClient.connected) {
@@ -945,6 +1396,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           localTicTacToe = false;
           localDotsBoxes = false;
           model.resetGame();
+          state.mode = "1P";
+          state.gameType = "1a2b";
+          state.joined = false;
+          state.joining = false;
+          view.setMode("1P");
+          view.renderPairStatus(null);
+          view.renderMatchmaking(null, gameNames);
           elements.setup.hidden = false;
           elements.page.classList.remove("is-playing");
           elements.lobby.hidden = true;
@@ -970,14 +1428,45 @@ document.addEventListener("DOMContentLoaded", async () => {
           setBanner("");
           window.scrollTo(0, 0);
         }
-        elements.backHome.addEventListener("click", returnHome);
-        elements.leave.addEventListener("click", returnHome);
-        elements.restart.addEventListener("click", () => {
+
+        function restartCurrentGame() {
+          clearOutcome();
           if (state.gameType === "1a2b") a1b2Controller.restart(getPlayers(), state.soloMode);
           else if (state.gameType === "tictactoe") ticTacToeController.restart();
           else if (state.gameType === "dotsandboxes") dotsAndBoxesController.restart();
           else if (state.gameType === "yahtzee") yahtzeeController.restart();
           else standaloneController?.restart();
+        }
+
+        function leaveCurrentGame() {
+          if (state.mode === "2P" && state.joined) returnToPairLobby();
+          else returnHome();
+        }
+
+        elements.backHome.addEventListener("click", returnHome);
+        elements.leave.addEventListener("click", leaveCurrentGame);
+        elements.restart.addEventListener("click", restartCurrentGame);
+        elements.resultHome.addEventListener("click", leaveCurrentGame);
+        elements.resultReplay.addEventListener("click", restartCurrentGame);
+        elements.matchRps.addEventListener("click", () => pairingFlow?.chooseDecision("rps"));
+        elements.matchForfeit.addEventListener("click", () => pairingFlow?.chooseDecision("forfeit"));
+        elements.matchGestureActions.addEventListener("click", (event) => {
+          const button = event.target.closest("[data-gesture]");
+          if (button) pairingFlow?.chooseGesture(button.dataset.gesture);
+        });
+        elements.chatLauncher.addEventListener("click", () => setRoomChatOpen(!roomChatOpen));
+        elements.chatClose.addEventListener("click", () => setRoomChatOpen(false));
+        elements.chatNotice.addEventListener("click", () => setRoomChatOpen(true));
+        elements.chatForm.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          await sendRoomChatMessage();
+        });
+        elements.chatInput.addEventListener("input", () => {
+          view.updateChatCount(elements.chatInput.value.length, CHAT_MAX_LENGTH);
+          view.setChatError("");
+        });
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape" && roomChatOpen) setRoomChatOpen(false);
         });
 
         if (!window.mqtt) {
