@@ -39,3 +39,44 @@
 
 - 静态检查：四语系 JSON 解析、HTML IDs、控制 topic、RPS stage hook、CSS 结构及 `git diff --check` 均通过。
 - 未执行真实浏览器双客户端联测；当前设备没有可用的 JavaScript 运行时／Webdev 诊断服务器。
+
+
+## 隱藏 Air Hockey
+- [x] 「隱藏Air hockey因為他是壞的」首頁不再顯示 Air Hockey 遊戲卡片；保留現有程式碼與模組，不順便修改或刪除其來源。
+
+## 數獨核心邏輯
+- [x] 「數獨 (Sudoku)：回溯法生成 9x9 完整終局、依難度對稱挖空並驗證唯一解、行列宮衝突檢測。」提供 9×9 state、可注入亂數的回溯生成、難度挖空與唯一解限制，以及行／列／3×3 宮衝突檢測；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 播棋核心邏輯
+- [x] 「播棋 (Mancala)：維護 14 坑狀態陣列、播種迴轉邏輯、捕獲與連走規則。」維護標準 Kalah 的 14 槽、合法落子、播種並略過對手店、捕獲、連走、終局掃子；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 心臟病核心邏輯
+- [x] 「心臟病 (Slapjack)：牌堆管理、順序出牌、即時條件比對與搶拍判定。」管理洗牌／發牌／出牌，依可配置拍牌條件判斷有效搶拍，先到的有效動作收牌並處理錯拍懲罰與終局；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 21 點核心邏輯
+- [x] 「21點 (Blackjack)：玩家/莊家手牌狀態、Ace（1/11）動態計算、分牌/加倍與勝負結算。」支援牌靴、玩家多手牌、莊家流程、Ace 軟硬總點、分牌／加倍籌碼檢查、爆牌／自然 21 及結算；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 大話骰／吹牛核心邏輯
+- [x] 「大話骰 / 吹牛 (Liar's Dice)：骰盅隨機擲骰、叫骰遞增驗證（數量與點數）、開骰比對邏輯。」保留每人私有骰面、以可注入亂數擲骰、驗證叫骰嚴格遞增、比對開骰結果、扣骰與淘汰；wild ones 規則可配置；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 九九核心邏輯
+- [x] 「九九 (99)：牌面累加計分、特殊牌功能（迴轉、PASS、指定點數、強制歸零/99）。」維護總點、方向、手牌、生命與回合；支援迴轉、PASS、指定點數、歸零／設為 99 及超過 99 的狀態處理；只新增 Model/Engine 與 Controller，不新增 UI/View。
+
+## 六款核心模組範圍
+- [x] 「請維持一致的程式碼風格，僅輸出各遊戲的核心邏輯（State / Engine / Controller）。」以既有 ES module 與資料夾命名風格新增六組模組；本次未見任何遊戲項目標示 `*`，因此六款均納入；不建構 UI、View、視覺素材或主畫面入口。
+
+## 六款核心邏輯驗證紀錄
+- 已確認六組 Model/Controller 共 12 個檔案皆存在且非空，並人工檢視各遊戲主要規則及狀態轉換分支。
+- 本機沒有可用的 JavaScript 執行器，未能執行 JS 語法／單元測試或雙客戶端實機聯測；四語系 overlay／文案、入口 DOM、Air Hockey 隱藏檢查及 `git diff --check` 已通過。
+
+
+## 六款新游戏接入 Playroom
+- [x] 「把除了空气全棍球以外的游戏都接上。」将 Sudoku、Mancala、Slapjack、Blackjack、Liar's Dice 与 99 接入现有首页游戏列表及共用游戏流程；Air Hockey 继续隐藏且不可选择。
+- [x] 六款游戏在现有标题列及窄屏布局中可游玩；1P 提供数独解谜／提示、四款带电脑对手的游戏，以及玩家对庄家的 21 点。
+- [x] 六款游戏均可从已配对 2P 流程邀请、接受／拒绝及猜拳后启动；同步离开／重开／终局，并保护数独解答、庄家底牌、暗牌及骰面。
+- [x] 新增游戏名称、操作与状态文字沿用现有 i18n，并补齐 en、ja、zh-Hans、zh-Hant。
+
+
+## 六款接入验证记录
+- 静态检查通过：四份新增翻译 overlay 均可解析；CorePlayView 直接引用的 51 个文案键在四语系齐全；六款 tile/root ID 与 Air Hockey hidden 检查通过；`git diff --check` 通过。
+- 尚未执行 JavaScript 语法／单元测试或双客户端实机联测：当前电脑没有可用 JavaScript 执行器，且本地浏览器功能不可用。

@@ -21,9 +21,11 @@ import { ReversiController } from "./games/reversi/controller.js";
 import { MemoryController } from "./games/memory/controller.js";
 import { GameSfx } from "./game-sfx.js";
 import { MatchmakingFlow, MATCH_GAME_TYPES } from "./matchmaking.js";
+import { CorePlayController } from "./games/coreplay/controller.js";
 
-const STANDALONE_GAME_TYPES = new Set(["chess", "battleship", "airhockey", "connectfour", "reversi", "memory"]);
-const STANDALONE_PROTOCOL_GAMES = new Set(["airhockey", "connectfour", "reversi", "memory"]);
+const CORE_GAME_TYPES = new Set(["sudoku", "mancala", "slapjack", "blackjack", "liarsdice", "ninetynine"]);
+const STANDALONE_GAME_TYPES = new Set(["chess", "battleship", "airhockey", "connectfour", "reversi", "memory", ...CORE_GAME_TYPES]);
+const STANDALONE_PROTOCOL_GAMES = new Set(["airhockey", "connectfour", "reversi", "memory", ...CORE_GAME_TYPES]);
 
 document.addEventListener("DOMContentLoaded", async () => {
       const i18n = await initializeI18n();
@@ -41,7 +43,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           airhockey: elements.airHockeyGame,
           connectfour: elements.connectFourGame,
           reversi: elements.reversiGame,
-          memory: elements.memoryGame
+          memory: elements.memoryGame,
+          sudoku: elements.sudokuGame,
+          mancala: elements.mancalaGame,
+          slapjack: elements.slapjackGame,
+          blackjack: elements.blackjackGame,
+          liarsdice: elements.liarsDiceGame,
+          ninetynine: elements.ninetynineGame
         };
         const standaloneFactories = {
           chess: ChessController,
@@ -82,6 +90,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         let outcomeTimer = 0;
         let activeOutcomeKey = "";
 
+        window.addEventListener("playroom:localechange", () => {
+          if (standaloneGameType) view.setGameHeader(standaloneGameType, state.mode);
+        });
+
         const CHAT_MAX_LENGTH = 280;
         const CHAT_HISTORY_LIMIT = 80;
         let roomChatMessages = [];
@@ -104,7 +116,13 @@ document.addEventListener("DOMContentLoaded", async () => {
           airhockey: "Air Hockey",
           connectfour: "Connect Four",
           reversi: "Reversi",
-          memory: "Memory Match"
+          memory: "Memory Match",
+          sudoku: "Sudoku",
+          mancala: "Mancala",
+          slapjack: "Slapjack",
+          blackjack: "Blackjack",
+          liarsdice: "Liar's Dice",
+          ninetynine: "99"
         };
         const playActionSound = (actor) => gameSfx.play(actor === "opponent" ? "opponent" : "self");
         const setConnection = (connectionState, text) => {
@@ -195,6 +213,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                 payload = message;
               }
               return publish(gameTopic(gameType), payload, retain);
+            },
+            publishPrivate(targetPlayerId, message) {
+              if (!CORE_GAME_TYPES.has(gameType) || !["p1", "p2"].includes(targetPlayerId)) {
+                return Promise.reject(new TypeError("Invalid private game snapshot target."));
+              }
+              const { retain: retainMessage = true, ...snapshot } = message;
+              return publish(`${gameTopic(gameType)}/private/${targetPlayerId}`, {
+                game: gameType,
+                playerId: localSeat,
+                targetPlayerId,
+                snapshot
+              }, retainMessage);
             }
           } : null;
           const options = {
@@ -214,16 +244,19 @@ document.addEventListener("DOMContentLoaded", async () => {
               elements.standaloneError.hidden = false;
             }
           };
-          const Controller = standaloneFactories[gameType];
+          const Controller = standaloneFactories[gameType] || (CORE_GAME_TYPES.has(gameType) ? CorePlayController : null);
           if (!Controller) throw new RangeError(`Unknown standalone game: ${gameType}`);
-          standaloneController = new Controller(options);
+          standaloneController = new Controller({ ...options, gameType });
           standaloneController.start();
           for (const data of pendingStandaloneMessages.splice(0)) {
-            if (data.playerId === standalonePlayerId) continue;
-            const message = gameType === "chess" ? { snapshot: data.snapshot, remotePlayerId: data.playerId }
-              : STANDALONE_PROTOCOL_GAMES.has(gameType)
-                ? { ...data.snapshot, remotePlayerId: data.playerId }
-                : data;
+            if (data.privateSnapshot) {
+              if (data.remotePlayerId === standalonePlayerId || data.targetPlayerId !== standalonePlayerId) continue;
+            } else if (data.playerId === standalonePlayerId) continue;
+            const message = data.privateSnapshot ? data
+              : gameType === "chess" ? { snapshot: data.snapshot, remotePlayerId: data.playerId }
+                : STANDALONE_PROTOCOL_GAMES.has(gameType)
+                  ? { ...data.snapshot, remotePlayerId: data.playerId }
+                  : data;
             for (const listener of standaloneSubscriptions) listener(message);
           }
           i18n.apply();
@@ -748,6 +781,23 @@ document.addEventListener("DOMContentLoaded", async () => {
           }
           if (parts[0] !== "games" || parts[1] !== state.gameType || parts[2] !== activeMatchId) return;
           const gameParts = parts.slice(3);
+          const localGameSeat = standalonePlayerId || (getPlayers()[0]?.id === state.playerId ? "p1" : "p2");
+          if (gameParts[0] === "private" && gameParts.length === 2 &&
+            CORE_GAME_TYPES.has(state.gameType) && data?.game === state.gameType &&
+            data.targetPlayerId === localGameSeat && data.playerId !== localGameSeat && data.snapshot) {
+            const message = {
+              ...data.snapshot,
+              remotePlayerId: data.playerId,
+              targetPlayerId: data.targetPlayerId,
+              privateSnapshot: true
+            };
+            if (standaloneSubscriptions.size) {
+              for (const listener of standaloneSubscriptions) listener(message);
+            } else {
+              pendingStandaloneMessages = [message];
+            }
+            return;
+          }
           if (gameParts.length === 0 && data?.game === state.gameType &&
             STANDALONE_GAME_TYPES.has(state.gameType)) {
             if (data.playerId === standalonePlayerId) return;
@@ -1060,7 +1110,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           if (gameType === "battleship" && snapshot.phase === "finished") {
             return { winnerId: snapshot.winner || "", draw: !snapshot.winner };
           }
-          if (["airhockey", "connectfour", "reversi", "memory"].includes(gameType) &&
+          if (["airhockey", "connectfour", "reversi", "memory", ...CORE_GAME_TYPES].includes(gameType) &&
               ["finished", "won"].includes(snapshot.phase)) {
             return { winnerId: snapshot.winnerId || "", draw: !snapshot.winnerId };
           }
@@ -1288,6 +1338,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         elements.connectFourTile.addEventListener("click", () => selectStandaloneGame("connectfour"));
         elements.reversiTile.addEventListener("click", () => selectStandaloneGame("reversi"));
         elements.memoryTile.addEventListener("click", () => selectStandaloneGame("memory"));
+        elements.sudokuTile.addEventListener("click", () => selectStandaloneGame("sudoku"));
+        elements.mancalaTile.addEventListener("click", () => selectStandaloneGame("mancala"));
+        elements.slapjackTile.addEventListener("click", () => selectStandaloneGame("slapjack"));
+        elements.blackjackTile.addEventListener("click", () => selectStandaloneGame("blackjack"));
+        elements.liarsDiceTile.addEventListener("click", () => selectStandaloneGame("liarsdice"));
+        elements.ninetynineTile.addEventListener("click", () => selectStandaloneGame("ninetynine"));
         elements.yahtzeeTile.addEventListener("click", () => selectGame("yahtzee"));
         elements.create.addEventListener("click", () => {
           isRoomHost = true;

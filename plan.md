@@ -47,3 +47,19 @@
 
 ### 2P 对局离开与重开同步
 非房主通过稳定房间 topic `${roomTopic()}/controls/game` 发送 non-retained 请求，附 `playerId`、`gameType` 与 `activeMatchId`；房主验证玩家及当前对局后，统一执行返回或重开。离开由房主沿用现有 `returnToPairLobby()`／新配对轮次通知双方，不断开 room；重开由房主调用该游戏既有 Controller 同步协议，避免不同游戏因请求方座位不同而出现单边重置。旧对局或无效请求会被忽略；1P 流程保持原样。
+
+
+## 六款新遊戲核心邏輯
+沿用原生 ES modules；新增 `js/games/{sudoku,mancala,slapjack,blackjack,liarsdice,ninetynine}/model.js` 與各自的 `controller.js`。每個 `model.js` 集中定義可驗證的 state、規則純函式、合法性檢查及不可變狀態轉換；每個 headless `controller.js` 僅提供遊戲指令、版本保護、狀態複製及 `onChange`，不依賴 DOM、View、MQTT 或新增套件。本批不加入遊戲卡片、不整合到共用 UI／配對流程，也不新增 View。
+
+數獨採 9×9 回溯填盤，以難度對應的中心對稱位置挖空，僅保留唯一解的移除；唯一解計數在找到第二個解時提前停止，行／列／宮衝突檢查共用同一組規則。播棋採標準 Kalah 14 槽排列（P1 坑 0–5、店 6；P2 坑 7–12、店 13），含略過對手店、捕獲、連走及清盤收子。心臟病採 52 張牌、輪流翻牌、Jack 搶拍；單一 JS 呼叫序列依 first-valid-slap 決勝，並明確處理錯拍及無牌玩家。
+
+21 點維持牌靴、各玩家多手牌、籌碼、玩家／莊家階段與結算；Ace 可動態作 1／11，並管理分牌、加倍、爆牌、自然 21 與莊家點數。大話骰保留每玩家隱藏骰子和剩餘骰數，叫骰依數量／點數嚴格遞增並支援開骰扣骰淘汰；wild ones 作為可配置規則。九九將特殊牌效果集中到 effect map：4 迴轉、5 PASS、9 由玩家指定總點數、10 強制歸零、K 強制至 99；超過 99 時當前玩家扣命而總點數不超界。所有隨機行為接受可注入 RNG，以利可重現的狀態測試。
+
+Air Hockey 僅從首頁選單隱藏入口，保留現有模組和程式碼，不在本次修復或移除。
+
+
+## 六款新游戏接入
+沿用当前单页 HTML、CSS、原生 ES modules 与既有 Web Audio／HiveMQ，不增加前端套件、服务或数据库。将六款已完成的 Model/Controller 接入首页卡片、共用游戏标题列、胜负弹窗、离开／重开及 MatchmakingFlow；新增 `js/games/coreplay/controller.js` 与 `view.js` 作为薄适配层，规则仍由 `sudoku`、`mancala`、`slapjack`、`blackjack`、`liarsdice`、`ninetynine` 各自模型负责。
+
+1P 提供 Sudoku 解谜与提示、Mancala／Slapjack／Liar's Dice／99 的电脑对手，以及玩家对庄家的 Blackjack；2P 经既有邀请／接受／拒绝／猜拳流程开始。2P 由房主处理动作并同步快照；Sudoku 作为轮流填写的共享谜题，Blackjack 作为多人同桌对庄家，其他游戏按各自规则轮流或即时操作。Sudoku 解答、Blackjack 底牌、Slapjack 手牌、Liar's Dice 骰面及 99 手牌使用遮蔽或逐玩家私有快照，不向另一端泄露。沿用共用控制器协调离开／重开与胜负公告；所有新增入口、操作及状态文案补齐 en、ja、zh-Hans、zh-Hant。Air Hockey 保持隐藏且排除于可选配对游戏，原有代码不删改。

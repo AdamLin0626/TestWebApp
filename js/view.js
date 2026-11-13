@@ -42,6 +42,12 @@ export class GameView {
       connectFourTile: $("#connect-four-tile"),
       reversiTile: $("#reversi-tile"),
       memoryTile: $("#memory-tile"),
+      sudokuTile: $("#sudoku-tile"),
+      mancalaTile: $("#mancala-tile"),
+      slapjackTile: $("#slapjack-tile"),
+      blackjackTile: $("#blackjack-tile"),
+      liarsDiceTile: $("#liars-dice-tile"),
+      ninetynineTile: $("#ninetynine-tile"),
       backHome: $("#back-home"),
       roomError: $("#room-error"),
       roomKicker: $("#room-kicker"),
@@ -95,6 +101,12 @@ export class GameView {
       connectFourGame: $("#connectfour-game"),
       reversiGame: $("#reversi-game"),
       memoryGame: $("#memory-game"),
+      sudokuGame: $("#sudoku-game"),
+      mancalaGame: $("#mancala-game"),
+      slapjackGame: $("#slapjack-game"),
+      blackjackGame: $("#blackjack-game"),
+      liarsDiceGame: $("#liarsdice-game"),
+      ninetynineGame: $("#ninetynine-game"),
       standaloneError: $("#standalone-error"),
       yahtzeeDice: $("#yahtzee-dice"),
       yahtzeeRoll: $("#yahtzee-roll"),
@@ -153,7 +165,13 @@ export class GameView {
       airhockey: "Air Hockey",
       connectfour: "Connect Four",
       reversi: "Reversi",
-      memory: "Memory Match"
+      memory: "Memory Match",
+      sudoku: "Sudoku",
+      mancala: "Mancala",
+      slapjack: "Slapjack",
+      blackjack: "Blackjack",
+      liarsdice: "Liar's Dice",
+      ninetynine: "99"
     };
     const subtitles = {
       "1a2b": "Guess the secret 4-digit code.",
@@ -165,7 +183,13 @@ export class GameView {
       airhockey: "Keep the puck moving. First to seven goals wins.",
       connectfour: "Drop discs to connect four.",
       reversi: "Flip more discs than your opponent.",
-      memory: "Find pairs and score points."
+      memory: "Find pairs and score points.",
+      sudoku: "Solve the grid without repeating a digit.",
+      mancala: "Sow seeds and capture stones in Kalah.",
+      slapjack: "Play cards in turn and slap every Jack.",
+      blackjack: "Play your hand against the dealer.",
+      liarsdice: "Bid on hidden dice or challenge a bid.",
+      ninetynine: "Use special cards and keep the total at 99 or less."
     };
     const gameLabels = {
       "1a2b": "1A2B game",
@@ -177,7 +201,13 @@ export class GameView {
       airhockey: "Air hockey game",
       connectfour: "Connect Four game",
       reversi: "Reversi game",
-      memory: "Memory match game"
+      memory: "Memory match game",
+      sudoku: "Sudoku game",
+      mancala: "Mancala game",
+      slapjack: "Slapjack game",
+      blackjack: "Blackjack game",
+      liarsdice: "Liar's Dice game",
+      ninetynine: "99 game"
     };
     this.elements.gameTitle.textContent = this.translate(titles[gameType] || titles["1a2b"]);
     this.elements.gameSubtitle.textContent = this.translate(subtitles[gameType] || subtitles["1a2b"]);
@@ -196,11 +226,20 @@ export class GameView {
       airhockey: ["AIR HOCKEY", "Play a real-time air hockey match with a friend.", "Each player controls one paddle. First to seven goals wins.", "Create game room →"],
       connectfour: ["CONNECT FOUR", "Take turns dropping discs with a friend.", "Drop a disc into a column. Connect four in any direction to win.", "Create game room →"],
       reversi: ["REVERSI", "Outflank a friend and claim the board.", "Place a disc to flip your opponent’s line. The most discs wins.", "Create game room →"],
-      memory: ["MEMORY MATCH", "Find pairs and outscore a friend.", "Take turns revealing two cards. A match scores a point and keeps your turn.", "Create game room →"]
+      memory: ["MEMORY MATCH", "Find pairs and outscore a friend.", "Take turns revealing two cards. A match scores a point and keeps your turn.", "Create game room →"],
+      sudoku: ["SUDOKU", "Share a Sudoku board and take turns filling cells.", "Fill every row, column and 3 × 3 box without repeating a digit.", "Create game room →"],
+      mancala: ["MANCALA", "Play Kalah with a friend.", "Choose a pit to sow. Capture stones and score more than your opponent.", "Create game room →"],
+      slapjack: ["SLAPJACK", "Race a friend to slap each Jack.", "Take turns playing a card. Slap the pile when a Jack appears.", "Create game room →"],
+      blackjack: ["BLACKJACK", "Play at one shared table against the dealer.", "Take turns hitting, standing, splitting or doubling down.", "Create game room →"],
+      liarsdice: ["LIAR’S DICE", "Bluff and call bids with a friend.", "Your dice stay hidden. Raise the bid or challenge your opponent.", "Create game room →"],
+      ninetynine: ["99", "Keep the running total at 99 or below.", "Play special cards, change direction and avoid losing all your lives.", "Create game room →"]
     };
     const [title, roomDescription, createDescription, createButton] = rooms[gameType] || rooms["1a2b"];
+    const coreTitles = { sudoku: "Sudoku", mancala: "Mancala", slapjack: "Slapjack", blackjack: "Blackjack", liarsdice: "Liar’s Dice", ninetynine: "99" };
+    const roomTitle = coreTitles[gameType] ? this.translate(coreTitles[gameType]) : title;
+    const roomPlayers = coreTitles[gameType] ? this.translate("Two players") : "TWO PLAYERS";
     this.setGameHeader(gameType, mode);
-    this.elements.roomKicker.textContent = `${title} / TWO PLAYERS`;
+    this.elements.roomKicker.textContent = `${roomTitle} / ${roomPlayers}`;
     this.elements.roomDescription.textContent = this.translate(roomDescription);
     this.elements.roomCreateDescription.textContent = this.translate(createDescription);
     this.elements.roomCreateButton.textContent = this.translate(createButton);

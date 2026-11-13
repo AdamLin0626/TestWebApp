@@ -1,5 +1,5 @@
-const LOCAL_TONE = Object.freeze({ start: 620, end: 860, peak: 0.045, type: 'sine' });
-const REMOTE_TONE = Object.freeze({ start: 235, end: 175, peak: 0.035, type: 'triangle' });
+const LOCAL_TONE = Object.freeze({ start: 620, end: 860, peak: 0.45, type: 'sine' });
+const REMOTE_TONE = Object.freeze({ start: 235, end: 175, peak: 0.35, type: 'triangle' });
 
 export class GameSfx {
   constructor() {

@@ -5,10 +5,15 @@ export const MATCH_GAME_TYPES = Object.freeze([
   'yahtzee',
   'chess',
   'battleship',
-  'airhockey',
   'connectfour',
   'reversi',
   'memory',
+  'sudoku',
+  'mancala',
+  'slapjack',
+  'blackjack',
+  'liarsdice',
+  'ninetynine',
 ]);
 
 const ACTIONS = new Set(['offer', 'accept', 'decline', 'counter']);

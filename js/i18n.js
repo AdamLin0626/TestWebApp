@@ -13,18 +13,27 @@ export async function initializeI18n(documentRef = document, navigatorRef = navi
   const originals = new WeakMap();
   let templateEntries = [];
 
+  const loadLocaleMessages = async (targetLocale) => {
+    const response = await fetch(new URL(`../Lanuage/${targetLocale}.json`, import.meta.url));
+    if (!response.ok) throw new Error(`Could not load ${targetLocale} translations (${response.status}).`);
+    const baseMessages = (await response.json()).messages;
+    const overlayResponse = await fetch(new URL(`../Lanuage/${targetLocale}-games.json`, import.meta.url));
+    if (!overlayResponse.ok) throw new Error(`Could not load ${targetLocale} game translations (${overlayResponse.status}).`);
+    const overlayMessages = (await overlayResponse.json()).messages;
+    if (!baseMessages || !overlayMessages || typeof baseMessages !== "object" || typeof overlayMessages !== "object") {
+      throw new TypeError(`Invalid ${targetLocale} translation bundle.`);
+    }
+    return { ...baseMessages, ...overlayMessages };
+  };
+
   const loadMessages = async (targetLocale) => {
     try {
-      const response = await fetch(new URL(`../Lanuage/${targetLocale}.json`, import.meta.url));
-      if (!response.ok) throw new Error(`Could not load ${targetLocale} translations (${response.status}).`);
-      messages = (await response.json()).messages;
+      messages = await loadLocaleMessages(targetLocale);
       locale = targetLocale;
     } catch (error) {
       console.error(error);
       if (targetLocale === "en") throw error;
-      const response = await fetch(new URL("../Lanuage/en.json", import.meta.url));
-      if (!response.ok) throw new Error(`Could not load fallback translations (${response.status}).`);
-      messages = (await response.json()).messages;
+      messages = await loadLocaleMessages("en");
       locale = "en";
     }
     templateEntries = Object.entries(messages)
@@ -120,6 +129,7 @@ export async function initializeI18n(documentRef = document, navigatorRef = navi
     if (nextLocale === locale) return;
     await loadMessages(nextLocale);
     apply();
+    documentRef.defaultView?.dispatchEvent(new Event("playroom:localechange"));
   });
 
   return {

@@ -450,6 +450,7 @@
         background: var(--panel);
         padding: 9px 12px;
       }
+      #air-hockey-tile[hidden] { display: none !important; }
       .game-tile > .tile-action { display: block; }
       .game-tile .tile-copy { display: grid; gap: 4px; color: var(--text); font: inherit; }
       .game-tile .tile-copy strong { font-size: 12px; }
@@ -1745,4 +1746,246 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .playroom-dialog { animation: none; }
+}
+
+
+/* Six integrated core games */
+#game[data-game="sudoku"]:not([hidden]),
+#game[data-game="mancala"]:not([hidden]),
+#game[data-game="slapjack"]:not([hidden]),
+#game[data-game="blackjack"]:not([hidden]),
+#game[data-game="liarsdice"]:not([hidden]),
+#game[data-game="ninetynine"]:not([hidden]) {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+}
+
+.core-play-shell {
+  display: flex;
+  width: min(100%, 720px);
+  margin: auto;
+  padding: 16px;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--text);
+}
+.core-play-status {
+  min-height: 24px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+.core-play-board {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(12px, 3vw, 20px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  box-shadow: 0 10px 30px rgba(35, 33, 39, .06);
+}
+.core-player-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+.core-player-card {
+  display: flex;
+  min-width: 0;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #faf9f6;
+  font-size: 12px;
+}
+.core-player-card.is-turn {
+  border-color: var(--orange);
+  background: #fff6ef;
+}
+.core-player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.core-player-value { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.core-actions {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.core-action { min-height: 40px; padding: 8px 12px; }
+.core-action:disabled { cursor: not-allowed; opacity: .48; }
+.core-note, .core-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.core-waiting { display: grid; min-height: 220px; place-content: center; gap: 10px; }
+.core-waiting-mark { color: var(--orange); font-size: 36px; text-align: center; }
+.core-setting { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.core-select, .core-number-input {
+  min-height: 40px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+.core-number-input { width: 96px; text-align: center; }
+
+.core-sudoku-grid {
+  display: grid;
+  width: min(100%, 520px);
+  aspect-ratio: 1;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  overflow: hidden;
+  border: 2px solid #6f6a62;
+  border-radius: 10px;
+  background: #fff;
+}
+.core-sudoku-cell {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid #d9d5cd;
+  border-bottom: 1px solid #d9d5cd;
+  border-radius: 0;
+  background: #fff;
+  color: var(--text);
+  font-size: clamp(15px, 4vw, 23px);
+  font-variant-numeric: tabular-nums;
+}
+.core-sudoku-cell.box-right { border-right: 2px solid #8d877d; }
+.core-sudoku-cell.box-bottom { border-bottom: 2px solid #8d877d; }
+.core-sudoku-cell.is-given { background: #f2f0eb; font-weight: 700; }
+.core-sudoku-cell.is-conflict { background: #ffebe5; color: #b33232; }
+.core-sudoku-cell.is-selected { position: relative; z-index: 1; box-shadow: inset 0 0 0 2px var(--orange); }
+.core-sudoku-cell:disabled { cursor: default; opacity: 1; }
+.core-sudoku-controls { display: grid; width: min(100%, 520px); grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 5px; }
+.core-sudoku-controls .core-action { min-width: 0; padding: 7px 3px; }
+
+.core-mancala-layout {
+  display: grid;
+  width: min(100%, 640px);
+  grid-template-columns: minmax(55px, .75fr) repeat(6, minmax(0, 1fr)) minmax(55px, .75fr);
+  grid-template-rows: repeat(2, minmax(92px, auto));
+  gap: 7px;
+  padding: 10px;
+  border: 1px solid #d8c9ab;
+  border-radius: 22px;
+  background: #e9dcc3;
+}
+.core-mancala-pits { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.core-pits-p2 { grid-column: 2 / span 6; grid-row: 1; }
+.core-pits-p1 { grid-column: 2 / span 6; grid-row: 2; }
+.core-mancala-store {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #d1c1a1;
+  border-radius: 22px;
+  background: #f9f2e5;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+.core-store-p2 { grid-column: 8; grid-row: 1; }
+.core-store-p1 { grid-column: 1; grid-row: 2; }
+.core-mancala-store strong { color: var(--text); font-size: 23px; }
+.core-mancala-pit {
+  min-width: 0;
+  min-height: 54px;
+  padding: 5px 2px;
+  border: 1px solid #d1c1a1;
+  border-radius: 50%;
+  background: #faf6ee;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+.core-mancala-pit[data-owner="p1"] { box-shadow: inset 0 -3px 0 rgba(228, 135, 85, .35); }
+.core-mancala-pit[data-owner="p2"] { box-shadow: inset 0 -3px 0 rgba(100, 55, 232, .24); }
+
+.core-card-table, .core-blackjack-table, .core-dice-table, .core-ninety-nine-table {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+}
+.core-center-pile, .core-hand-panel, .core-dice-player {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #faf9f6;
+}
+.core-face-card, .core-99-total { color: var(--text); font-size: clamp(28px, 7vw, 44px); font-weight: 800; }
+.core-playing-card {
+  display: inline-grid;
+  min-width: 44px;
+  min-height: 60px;
+  place-items: center;
+  padding: 5px;
+  border: 1px solid #d7d3cb;
+  border-radius: 9px;
+  background: #fff;
+  color: #332f2b;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 2px 5px rgba(35, 33, 39, .08);
+}
+.core-playing-card.is-hidden { border-color: #777098; background: #eeeaf8; color: #574c7b; letter-spacing: -2px; }
+.core-card-row, .core-99-hand { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
+.core-blackjack-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); align-items: stretch; }
+.core-blackjack-table > .core-actions, .core-blackjack-table > .core-note { grid-column: 1 / -1; }
+.core-blackjack-table h3 { margin: 0; font-size: 14px; }
+.core-hand { display: flex; width: 100%; align-items: center; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid transparent; border-radius: 11px; }
+.core-hand.is-active { border-color: var(--orange); background: #fff6ef; }
+.core-hand-total { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.core-hand-result { color: var(--text); font-size: 12px; font-weight: 700; }
+.core-opponent-dice { display: grid; width: 100%; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.core-dice-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+.core-die { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #d7d3cb; border-radius: 10px; background: #fff; color: var(--text); font-size: 18px; font-weight: 700; }
+.core-die.is-hidden { background: #f0edf8; color: #655b80; }
+.core-current-total { margin: 0; color: var(--text); font-size: 17px; font-weight: 700; text-align: center; }
+.core-99-total { display: grid; width: 110px; height: 110px; place-items: center; border: 4px solid #f1b17e; border-radius: 50%; background: #fff6ef; font-variant-numeric: tabular-nums; }
+.core-99-hand .core-action { min-width: 54px; min-height: 66px; font-size: 18px; }
+
+@media (max-width: 560px) {
+  .core-play-shell { padding: 10px; gap: 10px; }
+  .core-play-board { padding: 10px 7px; gap: 10px; }
+  .core-sudoku-controls { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .core-mancala-layout { grid-template-columns: minmax(39px, .7fr) repeat(6, minmax(0, 1fr)) minmax(39px, .7fr); grid-template-rows: repeat(2, minmax(70px, auto)); gap: 4px; padding: 6px; }
+  .core-mancala-pits { gap: 3px; }
+  .core-mancala-pit { min-height: 42px; font-size: 13px; }
+  .core-mancala-store { border-radius: 16px; font-size: 9px; }
+  .core-mancala-store strong { font-size: 18px; }
+  .core-blackjack-table { grid-template-columns: 1fr; }
+  .core-blackjack-table > .core-actions, .core-blackjack-table > .core-note { grid-column: 1; }
+  .core-playing-card { min-width: 38px; min-height: 54px; }
 }
