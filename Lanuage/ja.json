@@ -503,6 +503,8 @@
     "Choose the game": "ゲームを決めましょう",
     "Your friend chose {opponentGesture}. Choose rock, paper or scissors.": "友だちは{opponentGesture}を選びました。じゃんけんの手を選んでください。",
     "Both choices are in. Deciding which game to play…": "両方の手が出そろいました。ゲームを決めています…",
+    "Room connection is unavailable.": "ルームに接続できません。",
+    "Could not synchronize with the other player: {error}": "相手と同期できませんでした：{error}",
     "It was a tie. Choose rock, paper or scissors again.": "あいこです。もう一度、じゃんけんの手を選んでください。",
     "Choose rock, paper or scissors to decide between {game} and {counterGame}.": "{game}と{counterGame}のどちらを遊ぶか、じゃんけんで決めましょう。",
     "Room chat": "ルームチャット",

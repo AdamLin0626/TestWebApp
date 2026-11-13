@@ -37,3 +37,13 @@
 ## 依賴與執行限制
 
 不新增前端套件、產品後端或外部音效素材；繼續使用原生 HTML/CSS/ES modules、瀏覽器 Web Audio API 和既有 MQTT 房間。配對及遊戲操作以同一個房間連線同步；所有遊戲仍保留自己的 Controller。只修改本次指定的 Playroom 根目錄，不重建專案、不改 Git 遠端、不提交或發佈，除非另有要求。
+
+
+### 移动端聊天室焦点
+聊天室打开时将焦点移至关闭按钮，不主动聚焦文字输入框或弹出手机键盘；输入框采用 17px 字号与 `text-size-adjust: 100%`，保留浏览器手动缩放能力。
+
+### RPS 阶段可靠同步
+房主在收到有效的备选游戏后，以 retained `match/session` 显式公布 RPS 阶段，并携带提议者、两款候选游戏及当前 `gestureRound`。另一端即使先前的 choice 消息延迟，也可由阶段快照恢复猜拳状态。平手时递增 `gestureRound` 并重新公布 RPS 阶段；房主自己选择备选游戏时也立即运行同一解析流程。
+
+### 2P 对局离开与重开同步
+非房主通过稳定房间 topic `${roomTopic()}/controls/game` 发送 non-retained 请求，附 `playerId`、`gameType` 与 `activeMatchId`；房主验证玩家及当前对局后，统一执行返回或重开。离开由房主沿用现有 `returnToPairLobby()`／新配对轮次通知双方，不断开 room；重开由房主调用该游戏既有 Controller 同步协议，避免不同游戏因请求方座位不同而出现单边重置。旧对局或无效请求会被忽略；1P 流程保持原样。

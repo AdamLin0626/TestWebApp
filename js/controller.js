@@ -77,6 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         let pairingFlow = null;
         let pendingMatchMessages = [];
         let activeMatchId = "";
+        let handledGameControlIds = new Set();
         let lastPairRoundId = 0;
         let outcomeTimer = 0;
         let activeOutcomeKey = "";
@@ -730,6 +731,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             receiveRoomChatMessage(data);
             return;
           }
+          if (parts[0] === "controls" && parts[1] === "game" && parts.length === 2) {
+            handleRoomGameControl(data);
+            return;
+          }
           if (parts[0] === "match") {
             if (!pairingFlow ||
                 (relative.startsWith("match/players/") && !pairingFlow.ready) ||
@@ -868,7 +873,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (roomChatNoticeTimer) window.clearTimeout(roomChatNoticeTimer);
             roomChatNoticeTimer = 0;
             view.hideChatNotification();
-            window.requestAnimationFrame(() => elements.chatInput.focus());
+            window.requestAnimationFrame(() => elements.chatClose.focus());
           } else if (state.mode === "2P" && state.joined) {
             elements.chatLauncher.focus();
           }
@@ -1429,7 +1434,53 @@ document.addEventListener("DOMContentLoaded", async () => {
           window.scrollTo(0, 0);
         }
 
+        function sendRoomGameControl(action) {
+          if (!['leave', 'restart'].includes(action)) return false;
+          if (!state.joined || state.mode !== "2P" || !state.gameType || !activeMatchId ||
+              !client?.connected || getPlayers().length !== 2) {
+            setBanner(i18n.t("Room connection is unavailable."), "error");
+            return false;
+          }
+          const request = {
+            kind: "game-control-request",
+            requestId: crypto.randomUUID(),
+            action,
+            playerId: state.playerId,
+            gameType: state.gameType,
+            matchId: activeMatchId,
+          };
+          setBanner("");
+          publish(`${roomTopic()}/controls/game`, request, false).catch((error) => {
+            setBanner(i18n.t("Could not synchronize with the other player: {error}", {
+              error: error.message,
+            }), "error");
+          });
+          return true;
+        }
+
+        function handleRoomGameControl(message) {
+          if (!message || message.kind !== "game-control-request" || !isRoomHost ||
+              !state.joined || state.mode !== "2P" || !client?.connected ||
+              !["leave", "restart"].includes(message.action) ||
+              typeof message.requestId !== "string" || !message.requestId ||
+              message.requestId.length > 80 || message.playerId === state.playerId ||
+              message.gameType !== state.gameType || message.matchId !== activeMatchId ||
+              !activeMatchId || getPlayers().length !== 2 ||
+              !getPlayers().some((player) => player.id === message.playerId)) return;
+          if (handledGameControlIds.has(message.requestId)) return;
+          handledGameControlIds.add(message.requestId);
+          if (handledGameControlIds.size > 128) {
+            handledGameControlIds.delete(handledGameControlIds.values().next().value);
+          }
+          if (message.action === "leave") leaveCurrentGame();
+          else restartCurrentGame();
+        }
+
         function restartCurrentGame() {
+          if (state.mode === "2P" && state.joined && !isRoomHost) {
+            sendRoomGameControl("restart");
+            return;
+          }
           clearOutcome();
           if (state.gameType === "1a2b") a1b2Controller.restart(getPlayers(), state.soloMode);
           else if (state.gameType === "tictactoe") ticTacToeController.restart();
@@ -1439,7 +1490,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
 
         function leaveCurrentGame() {
-          if (state.mode === "2P" && state.joined) returnToPairLobby();
+          if (state.mode === "2P" && state.joined && !isRoomHost) {
+            sendRoomGameControl("leave");
+          } else if (state.mode === "2P" && state.joined) returnToPairLobby();
           else returnHome();
         }
 

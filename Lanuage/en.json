@@ -504,6 +504,8 @@
     ,"Choose the game": "Choose the game"
     ,"Your friend chose {opponentGesture}. Choose rock, paper or scissors.": "Your friend chose {opponentGesture}. Choose rock, paper or scissors."
     ,"Both choices are in. Deciding which game to play…": "Both choices are in. Deciding which game to play…"
+    ,"Room connection is unavailable.": "Room connection is unavailable."
+    ,"Could not synchronize with the other player: {error}": "Could not synchronize with the other player: {error}"
     ,"It was a tie. Choose rock, paper or scissors again.": "It was a tie. Choose rock, paper or scissors again."
     ,"Choose rock, paper or scissors to decide between {game} and {counterGame}.": "Choose rock, paper or scissors to decide between {game} and {counterGame}."
     ,"Room chat": "Room chat"

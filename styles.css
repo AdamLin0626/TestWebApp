@@ -1722,7 +1722,7 @@
 .chat-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 24px 10px; color: var(--muted); font-size: 13px; text-align: center; pointer-events: none; }
 .chat-empty[hidden] { display: none; }
 .chat-form { display: grid; flex: 0 0 auto; gap: 9px; padding: 13px 14px max(15px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--panel); }
-.chat-form textarea { display: block; width: 100%; min-width: 0; min-height: 68px; max-height: 130px; resize: vertical; border: 1px solid var(--line); border-radius: 13px; background: var(--bg); padding: 11px 12px; color: var(--text); font: inherit; font-size: 16px; line-height: 1.4; }
+.chat-form textarea { display: block; width: 100%; min-width: 0; min-height: 68px; max-height: 130px; resize: vertical; border: 1px solid var(--line); border-radius: 13px; background: var(--bg); padding: 11px 12px; color: var(--text); font: inherit; font-size: 17px; line-height: 1.4; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .chat-form textarea:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
 .chat-form textarea::placeholder { color: var(--muted); }
 .chat-form textarea:disabled { opacity: .55; }

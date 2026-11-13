@@ -503,6 +503,8 @@
     "Choose the game": "决定游戏",
     "Your friend chose {opponentGesture}. Choose rock, paper or scissors.": "朋友出了{opponentGesture}，请出剪刀、石头或布。",
     "Both choices are in. Deciding which game to play…": "双方都已出拳，正在决定玩哪款游戏……",
+    "Room connection is unavailable.": "房间连接不可用。",
+    "Could not synchronize with the other player: {error}": "无法与另一位玩家同步：{error}",
     "It was a tie. Choose rock, paper or scissors again.": "平局，请再出一次剪刀、石头或布。",
     "Choose rock, paper or scissors to decide between {game} and {counterGame}.": "请通过剪刀石头布决定玩{game}还是{counterGame}。",
     "Room chat": "房间聊天室",

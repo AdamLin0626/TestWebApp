@@ -41,6 +41,7 @@ export class MatchmakingFlow {
     this.roundId = 0;
     this.gestureRound = 0;
     this.ready = false;
+    this.rpsStageKey = "";
     this.choices = new Map();
     this.result = null;
     this.notifiedRound = 0;
@@ -64,6 +65,7 @@ export class MatchmakingFlow {
     this.roundId = Math.max(Date.now(), this.roundId + 1);
     this.gestureRound = 0;
     this.ready = true;
+    this.rpsStageKey = "";
     this.result = null;
     this.notifiedRound = 0;
     this.choices = new Map([
@@ -98,6 +100,7 @@ export class MatchmakingFlow {
     this._saveLocal(choice);
     this._publishLocal();
     this._emit();
+    if (this.isHost) this._maybeResolve();
     return true;
   }
 
@@ -138,11 +141,13 @@ export class MatchmakingFlow {
         this.gestureRound = Number.isSafeInteger(payload.gestureRound) ? payload.gestureRound : 0;
         this.ready = true;
         this.result = null;
+        this.rpsStageKey = "";
         this.notifiedRound = 0;
         this.choices = new Map([
           [this.playerId, DEFAULT_CHOICE()],
           [this.opponentId, DEFAULT_CHOICE()],
         ]);
+        this._applyRpsStage(payload);
         this._publishLocal();
         this._emit();
         return true;
@@ -150,7 +155,13 @@ export class MatchmakingFlow {
       if (Number.isSafeInteger(payload.gestureRound) && payload.gestureRound > this.gestureRound) {
         this.gestureRound = payload.gestureRound;
         for (const choice of this.choices.values()) choice.gesture = '';
+        this.rpsStageKey = "";
+        this._applyRpsStage(payload);
         this._publishLocal();
+        this._emit();
+        return true;
+      }
+      if (payload.phase === 'rps' && this.snapshot().phase !== 'rps' && this._applyRpsStage(payload)) {
         this._emit();
         return true;
       }
@@ -228,10 +239,34 @@ export class MatchmakingFlow {
     this.roundId = 0;
     this.gestureRound = 0;
     this.ready = false;
+    this.rpsStageKey = "";
     this.choices.clear();
     this.result = null;
     this.notifiedRound = 0;
     this._emit();
+  }
+
+  _applyRpsStage(payload) {
+    const offererId = payload.offererId;
+    const counterPlayerId = payload.counterPlayerId;
+    if (payload.phase !== 'rps' || payload.roundId !== this.roundId ||
+        payload.gestureRound !== this.gestureRound || !validGameType(payload.offerGame) ||
+        !validGameType(payload.counterGame) || ![this.hostId, this.opponentId].includes(offererId) ||
+        counterPlayerId !== this._otherPlayerId(offererId)) return false;
+    const offerChoice = this.choices.get(offererId) || DEFAULT_CHOICE();
+    const counterChoice = this.choices.get(counterPlayerId) || DEFAULT_CHOICE();
+    this.choices.set(offererId, {
+      gameType: payload.offerGame,
+      action: 'offer',
+      gesture: offerChoice.gesture,
+    });
+    this.choices.set(counterPlayerId, {
+      gameType: payload.counterGame,
+      action: 'counter',
+      gesture: counterChoice.gesture,
+    });
+    this.rpsStageKey = `${this.roundId}:${this.gestureRound}`;
+    return true;
   }
 
   _activeOffer() {
@@ -279,6 +314,7 @@ export class MatchmakingFlow {
       return;
     }
     if (response.action !== 'counter' || !validGameType(response.gameType)) return;
+    this._publishRpsStage(offer, responderId, response);
 
     const offerGesture = offer.choice.gesture;
     const counterGesture = response.gesture;
@@ -287,12 +323,8 @@ export class MatchmakingFlow {
     if (winner === null) {
       this.gestureRound += 1;
       for (const choice of this.choices.values()) choice.gesture = '';
-      this.publish('match/session', {
-        kind: 'session',
-        hostId: this.hostId,
-        roundId: this.roundId,
-        gestureRound: this.gestureRound,
-      }, true);
+      this.rpsStageKey = "";
+      this._publishRpsStage(offer, responderId, response);
       this._publishLocal();
       this._emit();
       return;
@@ -300,6 +332,23 @@ export class MatchmakingFlow {
     const winnerId = winner === 0 ? offer.playerId : responderId;
     const gameType = winner === 0 ? offer.choice.gameType : response.gameType;
     this._publishResult(gameType, winnerId, 'rps');
+  }
+
+  _publishRpsStage(offer, counterPlayerId, response) {
+    const stageKey = `${this.roundId}:${this.gestureRound}`;
+    if (this.rpsStageKey === stageKey) return;
+    this.rpsStageKey = stageKey;
+    this.publish('match/session', {
+      kind: 'session',
+      hostId: this.hostId,
+      roundId: this.roundId,
+      gestureRound: this.gestureRound,
+      phase: 'rps',
+      offererId: offer.playerId,
+      offerGame: offer.choice.gameType,
+      counterPlayerId,
+      counterGame: response.gameType,
+    }, true);
   }
 
   _publishResult(gameType, winnerId, method) {
