@@ -234,7 +234,6 @@
 
       <aside class="room-chat" id="room-chat" hidden>
         <button class="chat-launcher" id="chat-launcher" type="button" aria-label="Open room chat" aria-controls="chat-panel" aria-expanded="false">
-          <span class="chat-launcher-label">Messages</span>
           <span class="chat-launcher-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false"><path d="M20.25 11.5a8.25 8.25 0 0 1-8.25 8.25H6l-3 1.5v-9.75A8.25 8.25 0 0 1 11.25 3h.5a8.5 8.5 0 0 1 8.5 8.5Z"/><path d="M8 11h8M8 14.5h5"/></svg>
           </span>
@@ -274,12 +273,12 @@
 
       <div class="playroom-overlay" id="match-overlay" hidden>
         <section class="playroom-dialog" role="dialog" aria-modal="true" aria-labelledby="match-title">
-          <span class="dialog-kicker">PLAYROOM MATCH</span>
-          <h2 id="match-title">Both game choices are in</h2>
-          <p id="match-status" role="status" aria-live="polite">Choose how to decide which game to play.</p>
+          <span class="dialog-kicker">GAME INVITATION</span>
+          <h2 id="match-title">Would you like to play this game?</h2>
+          <p id="match-status" role="status" aria-live="polite">Your friend wants to play this game.</p>
           <div class="dialog-actions" id="match-decision-actions">
-            <button class="button button-primary" id="match-rps" type="button">Play rock, paper, scissors</button>
-            <button class="button button-secondary" id="match-forfeit" type="button">Pass and accept their game</button>
+            <button class="button button-primary" id="match-accept" type="button">Yes, let's play</button>
+            <button class="button button-secondary" id="match-decline" type="button">No, choose another game</button>
           </div>
           <div class="gesture-actions" id="match-gesture-actions" hidden>
             <button class="button button-secondary" type="button" data-gesture="rock">Rock</button>

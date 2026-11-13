@@ -291,7 +291,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   returnToPairLobby({ keepFlow: true });
                 }
                 const partner = getPlayers().find((player) => player.id !== state.playerId);
-                view.renderPairStatus(snapshot, state.playerName, partner?.name);
+                view.renderPairStatus(snapshot, state.playerName, partner?.name, gameNames);
                 view.renderMatchmaking(snapshot, gameNames);
               },
               onResolve: (result) => {
@@ -392,7 +392,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             }
             const snapshot = pairingFlow?.snapshot() || null;
             const partner = getPlayers().find((player) => player.id !== state.playerId);
-            view.renderPairStatus(snapshot, state.playerName, partner?.name);
+            view.renderPairStatus(snapshot, state.playerName, partner?.name, gameNames);
             view.renderMatchmaking(snapshot, gameNames);
           }
           window.scrollTo(0, 0);
@@ -986,7 +986,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           ensurePairingFlow();
           const snapshot = pairingFlow?.snapshot() || null;
           const partner = onlinePlayers.find((player) => player.id !== state.playerId);
-          view.renderPairStatus(snapshot, state.playerName, partner?.name);
+          view.renderPairStatus(snapshot, state.playerName, partner?.name, gameNames);
           i18n.apply();
         }
 
@@ -1448,8 +1448,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         elements.restart.addEventListener("click", restartCurrentGame);
         elements.resultHome.addEventListener("click", leaveCurrentGame);
         elements.resultReplay.addEventListener("click", restartCurrentGame);
-        elements.matchRps.addEventListener("click", () => pairingFlow?.chooseDecision("rps"));
-        elements.matchForfeit.addEventListener("click", () => pairingFlow?.chooseDecision("forfeit"));
+        elements.matchAccept.addEventListener("click", () => pairingFlow?.chooseDecision("accept"));
+        elements.matchDecline.addEventListener("click", () => pairingFlow?.chooseDecision("decline"));
         elements.matchGestureActions.addEventListener("click", (event) => {
           const button = event.target.closest("[data-gesture]");
           if (button) pairingFlow?.chooseGesture(button.dataset.gesture);

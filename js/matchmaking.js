@@ -11,9 +11,9 @@ export const MATCH_GAME_TYPES = Object.freeze([
   'memory',
 ]);
 
-const DECISIONS = new Set(['rps', 'forfeit']);
+const ACTIONS = new Set(['offer', 'accept', 'decline', 'counter']);
 const GESTURES = Object.freeze(['rock', 'paper', 'scissors']);
-const DEFAULT_CHOICE = () => ({ gameType: '', decision: '', gesture: '' });
+const DEFAULT_CHOICE = () => ({ gameType: '', action: '', gesture: '' });
 
 function validGameType(value) {
   return MATCH_GAME_TYPES.includes(value);
@@ -83,9 +83,17 @@ export class MatchmakingFlow {
 
   chooseGame(gameType) {
     if (!this.ready || this.result || !validGameType(gameType)) return false;
+    const state = this.snapshot();
     const choice = this._localChoice();
-    choice.gameType = gameType;
-    choice.decision = '';
+    if (state.phase === 'select') {
+      choice.gameType = gameType;
+      choice.action = 'offer';
+    } else if (state.phase === 'counter' && state.counterPlayerId === this.playerId) {
+      choice.gameType = gameType;
+      choice.action = 'counter';
+    } else {
+      return false;
+    }
     choice.gesture = '';
     this._saveLocal(choice);
     this._publishLocal();
@@ -94,11 +102,11 @@ export class MatchmakingFlow {
   }
 
   chooseDecision(decision) {
-    if (!this.ready || this.result || !DECISIONS.has(decision)) return false;
+    if (!this.ready || this.result || !['accept', 'decline'].includes(decision)) return false;
     const state = this.snapshot();
-    if (!state.bothSelected) return false;
+    if (state.phase !== 'offer' || state.offererId === this.playerId) return false;
     const choice = this._localChoice();
-    choice.decision = decision;
+    choice.action = decision;
     choice.gesture = '';
     this._saveLocal(choice);
     this._publishLocal();
@@ -110,7 +118,7 @@ export class MatchmakingFlow {
   chooseGesture(gesture) {
     if (!this.ready || this.result || !GESTURES.includes(gesture)) return false;
     const state = this.snapshot();
-    if (!state.bothSelected || state.localDecision !== 'rps' || state.opponentDecision !== 'rps') return false;
+    if (state.phase !== 'rps' || state.localGesture) return false;
     const choice = this._localChoice();
     choice.gesture = gesture;
     this._saveLocal(choice);
@@ -155,7 +163,7 @@ export class MatchmakingFlow {
         roundId: payload.roundId,
         gameType: payload.gameType,
         winnerId: payload.winnerId || '',
-        method: payload.method || 'rps',
+        method: payload.method || 'accepted',
       };
       this._notifyResolved();
       this._emit();
@@ -168,7 +176,7 @@ export class MatchmakingFlow {
         payload.roundId !== this.roundId || payload.gestureRound !== this.gestureRound) return false;
     const choice = {
       gameType: validGameType(payload.gameType) ? payload.gameType : '',
-      decision: DECISIONS.has(payload.decision) ? payload.decision : '',
+      action: ACTIONS.has(payload.action) ? payload.action : '',
       gesture: GESTURES.includes(payload.gesture) ? payload.gesture : '',
     };
     this.choices.set(topicPlayerId, choice);
@@ -180,19 +188,38 @@ export class MatchmakingFlow {
   snapshot() {
     const local = this.choices.get(this.playerId) || DEFAULT_CHOICE();
     const opponent = this.choices.get(this.opponentId) || DEFAULT_CHOICE();
+    const offer = this._activeOffer();
+    const responderId = offer ? this._otherPlayerId(offer.playerId) : '';
+    const response = responderId ? (this.choices.get(responderId) || DEFAULT_CHOICE()) : DEFAULT_CHOICE();
+    let phase = 'select';
+    if (this.result) phase = 'resolved';
+    else if (offer && response.action === 'accept') phase = 'resolving';
+    else if (offer && response.action === 'decline') phase = 'counter';
+    else if (offer && response.action === 'counter' && validGameType(response.gameType)) phase = 'rps';
+    else if (offer) phase = 'offer';
+
     return {
       roundId: this.roundId,
       gestureRound: this.gestureRound,
       ready: this.ready,
       opponentId: this.opponentId,
+      localId: this.playerId,
       localGame: local.gameType,
       opponentGame: opponent.gameType,
-      localDecision: local.decision,
-      opponentDecision: opponent.decision,
+      localAction: local.action,
+      opponentAction: opponent.action,
       localGesture: local.gesture,
       opponentGesture: opponent.gesture,
-      bothSelected: Boolean(local.gameType && opponent.gameType),
-      bothDecided: Boolean(local.decision && opponent.decision),
+      phase,
+      offererId: offer?.playerId || '',
+      offerGame: offer?.gameType || '',
+      responderId,
+      counterPlayerId: phase === 'counter' || phase === 'rps' ? responderId : '',
+      counterGame: response.action === 'counter' ? response.gameType : '',
+      localIsOfferer: Boolean(offer && offer.playerId === this.playerId),
+      localCanChooseCounter: Boolean(phase === 'counter' && responderId === this.playerId),
+      bothSelected: Boolean(offer),
+      bothDecided: Boolean(response.action),
       result: this.result,
     };
   }
@@ -205,6 +232,20 @@ export class MatchmakingFlow {
     this.result = null;
     this.notifiedRound = 0;
     this._emit();
+  }
+
+  _activeOffer() {
+    const candidates = [this.hostId, this.opponentId]
+      .filter(Boolean)
+      .map((playerId) => ({ playerId, choice: this.choices.get(playerId) || DEFAULT_CHOICE() }))
+      .filter(({ choice }) => choice.action === 'offer' && validGameType(choice.gameType));
+    candidates.sort((left, right) => left.playerId === this.hostId ? -1 : right.playerId === this.hostId ? 1 : 0);
+    return candidates[0] || null;
+  }
+
+  _otherPlayerId(playerId) {
+    if (!playerId) return '';
+    return playerId === this.playerId ? this.opponentId : this.playerId;
   }
 
   _localChoice() {
@@ -229,26 +270,20 @@ export class MatchmakingFlow {
 
   _maybeResolve() {
     if (!this.isHost || !this.ready || this.result || !this.opponentId) return;
-    const hostChoice = this.choices.get(this.hostId) || DEFAULT_CHOICE();
-    const opponentChoice = this.choices.get(this.opponentId) || DEFAULT_CHOICE();
-    if (!hostChoice.gameType || !opponentChoice.gameType || !hostChoice.decision || !opponentChoice.decision) return;
+    const offer = this._activeOffer();
+    if (!offer) return;
+    const responderId = this._otherPlayerId(offer.playerId);
+    const response = this.choices.get(responderId) || DEFAULT_CHOICE();
+    if (response.action === 'accept') {
+      this._publishResult(offer.choice.gameType, '', 'accepted');
+      return;
+    }
+    if (response.action !== 'counter' || !validGameType(response.gameType)) return;
 
-    if (hostChoice.decision === 'forfeit' && opponentChoice.decision === 'forfeit') {
-      this._publishResult(hostChoice.gameType, this.hostId, 'both-forfeit');
-      return;
-    }
-    if (hostChoice.decision === 'forfeit') {
-      this._publishResult(opponentChoice.gameType, this.opponentId, 'forfeit');
-      return;
-    }
-    if (opponentChoice.decision === 'forfeit') {
-      this._publishResult(hostChoice.gameType, this.hostId, 'forfeit');
-      return;
-    }
-    if (hostChoice.decision !== 'rps' || opponentChoice.decision !== 'rps' ||
-        !hostChoice.gesture || !opponentChoice.gesture) return;
-
-    const winner = gestureWinner(hostChoice.gesture, opponentChoice.gesture);
+    const offerGesture = offer.choice.gesture;
+    const counterGesture = response.gesture;
+    if (!GESTURES.includes(offerGesture) || !GESTURES.includes(counterGesture)) return;
+    const winner = gestureWinner(offerGesture, counterGesture);
     if (winner === null) {
       this.gestureRound += 1;
       for (const choice of this.choices.values()) choice.gesture = '';
@@ -262,9 +297,9 @@ export class MatchmakingFlow {
       this._emit();
       return;
     }
-    const winnerId = winner === 0 ? this.hostId : this.opponentId;
-    const winningChoice = winner === 0 ? hostChoice : opponentChoice;
-    this._publishResult(winningChoice.gameType, winnerId, 'rps');
+    const winnerId = winner === 0 ? offer.playerId : responderId;
+    const gameType = winner === 0 ? offer.choice.gameType : response.gameType;
+    this._publishResult(gameType, winnerId, 'rps');
   }
 
   _publishResult(gameType, winnerId, method) {

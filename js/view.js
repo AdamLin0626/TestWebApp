@@ -21,8 +21,8 @@ export class GameView {
       matchTitle: $("#match-title"),
       matchStatus: $("#match-status"),
       matchDecisionActions: $("#match-decision-actions"),
-      matchRps: $("#match-rps"),
-      matchForfeit: $("#match-forfeit"),
+      matchAccept: $("#match-accept"),
+      matchDecline: $("#match-decline"),
       matchGestureActions: $("#match-gesture-actions"),
       resultOverlay: $("#result-overlay"),
       resultTitle: $("#result-title"),
@@ -213,52 +213,79 @@ export class GameView {
     this.elements.roomCreateButton.textContent = this.translate("Create room →");
   }
 
-  renderPairStatus(snapshot, localName = "", opponentName = "") {
+  renderPairStatus(snapshot, localName = "", opponentName = "", gameNames = {}) {
     const paired = Boolean(snapshot?.ready && snapshot.opponentId);
     this.elements.pairedStatus.hidden = !paired;
     if (!paired) return;
     this.elements.pairedTitle.textContent = this.translate("Paired with {name}", { name: opponentName || this.translate("Opponent") });
-    let detail = "Choose a game below. Your friend will choose one too.";
-    if (snapshot.localGame && !snapshot.opponentGame) detail = "You chose a game. Waiting for your friend to choose.";
-    else if (!snapshot.localGame && snapshot.opponentGame) detail = "Your friend chose a game. Choose yours below.";
-    else if (snapshot.bothSelected) detail = "Both games are selected. Decide with rock, paper, scissors or pass.";
-    this.elements.pairedDetail.textContent = this.translate(detail);
+    const offerName = this.translate(gameNames[snapshot.offerGame] || snapshot.offerGame || "");
+    const counterName = this.translate(gameNames[snapshot.counterGame] || snapshot.counterGame || "");
+    let detail = "Choose a game below to invite your friend.";
+    if (snapshot.phase === "offer" && snapshot.localIsOfferer) {
+      detail = "You invited your friend to play {game}. Waiting for your friend to respond.";
+    } else if (snapshot.phase === "offer") {
+      detail = "Your friend invited you to play {game}.";
+    } else if (snapshot.phase === "counter" && snapshot.localCanChooseCounter) {
+      detail = "Your friend declined. Choose another game below; then play rock, paper, scissors.";
+    } else if (snapshot.phase === "counter") {
+      detail = "Your friend declined and is choosing another game.";
+    } else if (snapshot.phase === "rps") {
+      detail = "Choose rock, paper or scissors to decide between {game} and {counterGame}.";
+    } else if (snapshot.phase === "resolving") {
+      detail = "Your friend accepted. Starting the game…";
+    }
+    this.elements.pairedDetail.textContent = this.translate(detail, {
+      game: offerName,
+      counterGame: counterName,
+      name: opponentName || this.translate("Opponent")
+    });
   }
 
   renderMatchmaking(snapshot, gameNames = {}) {
-    const show = Boolean(snapshot?.bothSelected && !snapshot.result);
+    const phase = snapshot?.phase || "";
+    const show = Boolean(snapshot?.ready && !snapshot.result &&
+      (phase === "offer" || (phase === "counter" && !snapshot.localCanChooseCounter) || phase === "rps"));
     this.elements.matchOverlay.hidden = !show;
     if (!show) return;
-    const localName = this.translate(gameNames[snapshot.localGame] || snapshot.localGame);
-    const opponentName = this.translate(gameNames[snapshot.opponentGame] || snapshot.opponentGame);
-    const localDecided = Boolean(snapshot.localDecision);
-    const bothRps = snapshot.localDecision === "rps" && snapshot.opponentDecision === "rps";
-    const bothDecidedWithoutRps = Boolean(snapshot.bothDecided && !bothRps);
-    this.elements.matchDecisionActions.hidden = bothRps || bothDecidedWithoutRps;
-    this.elements.matchRps.disabled = localDecided;
-    this.elements.matchForfeit.disabled = localDecided;
+    const offerName = this.translate(gameNames[snapshot.offerGame] || snapshot.offerGame || "");
+    const counterName = this.translate(gameNames[snapshot.counterGame] || snapshot.counterGame || "");
+    const localIsOfferer = Boolean(snapshot.localIsOfferer);
+    const bothRps = phase === "rps";
+    this.elements.matchDecisionActions.hidden = phase !== "offer" || localIsOfferer;
+    this.elements.matchAccept.disabled = phase !== "offer" || localIsOfferer;
+    this.elements.matchDecline.disabled = phase !== "offer" || localIsOfferer;
     this.elements.matchGestureActions.hidden = !bothRps;
     this.elements.matchGestureActions.querySelectorAll("[data-gesture]").forEach((button) => {
       button.disabled = Boolean(snapshot.localGesture);
       button.setAttribute("aria-pressed", String(button.dataset.gesture === snapshot.localGesture));
     });
 
-    let status = "Your game: {mine}. Their game: {theirs}. Choose rock, paper, scissors or pass.";
-    if (localDecided && !snapshot.opponentDecision) status = "You have decided. Waiting for your friend.";
-    else if (!localDecided && snapshot.opponentDecision) status = "Your friend has decided. Make your choice.";
-    else if (bothDecidedWithoutRps && snapshot.localDecision === "forfeit" && snapshot.opponentDecision === "forfeit") status = "Both players passed. Starting the selected game…";
-    else if (bothDecidedWithoutRps && snapshot.localDecision === "forfeit") status = "You passed. Starting the game your friend chose…";
-    else if (bothDecidedWithoutRps) status = "Your friend passed. Starting your game…";
-    else if (bothRps && snapshot.localGesture && !snapshot.opponentGesture) status = "You chose {gesture}. Waiting for your friend.";
-    else if (bothRps && !snapshot.localGesture) status = "Choose rock, paper or scissors.";
-    else if (bothRps && snapshot.localGesture && snapshot.opponentGesture) status = "Both choices are in. Deciding the game…";
-    const gestureLabel = snapshot.localGesture
-      ? snapshot.localGesture[0].toUpperCase() + snapshot.localGesture.slice(1)
+    let title = "Would you like to play {game}?";
+    let status = "Your friend wants to play {game}.";
+    if (phase === "offer" && localIsOfferer) {
+      title = "Waiting for your friend";
+      status = "You invited your friend to play {game}. Waiting for your friend to respond.";
+    } else if (phase === "counter") {
+      title = "Waiting for your friend";
+      status = "Your friend declined. Waiting for them to choose another game.";
+    } else if (bothRps) {
+      title = "Choose the game";
+      status = "Choose rock, paper or scissors to decide between {game} and {counterGame}.";
+      if (snapshot.localGesture && !snapshot.opponentGesture) status = "You chose {gesture}. Waiting for your friend.";
+      else if (!snapshot.localGesture && snapshot.opponentGesture) status = "Your friend chose {opponentGesture}. Choose rock, paper or scissors.";
+      else if (snapshot.localGesture && snapshot.opponentGesture) status = "Both choices are in. Deciding which game to play…";
+      else if (snapshot.gestureRound > 0) status = "It was a tie. Choose rock, paper or scissors again.";
+    }
+    this.elements.matchTitle.textContent = this.translate(title, { game: offerName });
+    const gestureLabel = snapshot.localGesture ? snapshot.localGesture[0].toUpperCase() + snapshot.localGesture.slice(1) : "";
+    const opponentGestureLabel = snapshot.opponentGesture
+      ? snapshot.opponentGesture[0].toUpperCase() + snapshot.opponentGesture.slice(1)
       : "";
     this.elements.matchStatus.textContent = this.translate(status, {
-      mine: localName,
-      theirs: opponentName,
-      gesture: this.translate(gestureLabel)
+      game: offerName,
+      counterGame: counterName,
+      gesture: this.translate(gestureLabel),
+      opponentGesture: this.translate(opponentGestureLabel)
     });
   }
 
@@ -715,7 +742,8 @@ export class GameView {
   }
 
   setChatOpen(open) {
-    const { chatPanel, chatLauncher } = this.elements;
+    const { chatRoot, chatPanel, chatLauncher } = this.elements;
+    chatRoot.classList.toggle("is-chat-open", open);
     chatPanel.classList.toggle("is-open", open);
     chatPanel.setAttribute("aria-hidden", String(!open));
     chatPanel.inert = !open;
