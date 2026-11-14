@@ -48,6 +48,8 @@ export class GameView {
       blackjackTile: $("#blackjack-tile"),
       liarsDiceTile: $("#liars-dice-tile"),
       ninetynineTile: $("#ninetynine-tile"),
+      guessWhoTile: $("#guesswho-tile"),
+      dominoesTile: $("#dominoes-tile"),
       backHome: $("#back-home"),
       roomError: $("#room-error"),
       roomKicker: $("#room-kicker"),
@@ -107,6 +109,8 @@ export class GameView {
       blackjackGame: $("#blackjack-game"),
       liarsDiceGame: $("#liarsdice-game"),
       ninetynineGame: $("#ninetynine-game"),
+      guessWhoGame: $("#guesswho-game"),
+      dominoesGame: $("#dominoes-game"),
       standaloneError: $("#standalone-error"),
       yahtzeeDice: $("#yahtzee-dice"),
       yahtzeeRoll: $("#yahtzee-roll"),
@@ -171,7 +175,9 @@ export class GameView {
       slapjack: "Slapjack",
       blackjack: "Blackjack",
       liarsdice: "Liar's Dice",
-      ninetynine: "99"
+      ninetynine: "99",
+      guesswho: "Guess Who?",
+      dominoes: "Dominoes"
     };
     const subtitles = {
       "1a2b": "Guess the secret 4-digit code.",
@@ -189,7 +195,9 @@ export class GameView {
       slapjack: "Play cards in turn and slap every Jack.",
       blackjack: "Play your hand against the dealer.",
       liarsdice: "Bid on hidden dice or challenge a bid.",
-      ninetynine: "Use special cards and keep the total at 99 or less."
+      ninetynine: "Use special cards and keep the total at 99 or less.",
+      guesswho: "Ask yes/no questions and narrow down the hidden character.",
+      dominoes: "Match the open ends, draw when you must, and reach 150 points."
     };
     const gameLabels = {
       "1a2b": "1A2B game",
@@ -207,7 +215,9 @@ export class GameView {
       slapjack: "Slapjack game",
       blackjack: "Blackjack game",
       liarsdice: "Liar's Dice game",
-      ninetynine: "99 game"
+      ninetynine: "99 game",
+      guesswho: "Guess Who game",
+      dominoes: "Dominoes game"
     };
     this.elements.gameTitle.textContent = this.translate(titles[gameType] || titles["1a2b"]);
     this.elements.gameSubtitle.textContent = this.translate(subtitles[gameType] || subtitles["1a2b"]);
@@ -232,10 +242,12 @@ export class GameView {
       slapjack: ["SLAPJACK", "Race a friend to slap each Jack.", "Take turns playing a card. Slap the pile when a Jack appears.", "Create game room →"],
       blackjack: ["BLACKJACK", "Play at one shared table against the dealer.", "Take turns hitting, standing, splitting or doubling down.", "Create game room →"],
       liarsdice: ["LIAR’S DICE", "Bluff and call bids with a friend.", "Your dice stay hidden. Raise the bid or challenge your opponent.", "Create game room →"],
-      ninetynine: ["99", "Keep the running total at 99 or below.", "Play special cards, change direction and avoid losing all your lives.", "Create game room →"]
+      ninetynine: ["99", "Keep the running total at 99 or below.", "Play special cards, change direction and avoid losing all your lives.", "Create game room →"],
+      guesswho: ["GUESS WHO?", "Ask a friend yes/no questions to discover their character.", "Each player has a secret character. Ask about traits, eliminate candidates, and guess correctly to win.", "Create game room →"],
+      dominoes: ["DOMINOES", "Match tile ends and race to 150 points.", "Draw when you have no legal tile. A blocked round goes to the player with fewer pips.", "Create game room →"]
     };
     const [title, roomDescription, createDescription, createButton] = rooms[gameType] || rooms["1a2b"];
-    const coreTitles = { sudoku: "Sudoku", mancala: "Mancala", slapjack: "Slapjack", blackjack: "Blackjack", liarsdice: "Liar’s Dice", ninetynine: "99" };
+    const coreTitles = { sudoku: "Sudoku", mancala: "Mancala", slapjack: "Slapjack", blackjack: "Blackjack", liarsdice: "Liar’s Dice", ninetynine: "99", guesswho: "Guess Who?", dominoes: "Dominoes" };
     const roomTitle = coreTitles[gameType] ? this.translate(coreTitles[gameType]) : title;
     const roomPlayers = coreTitles[gameType] ? this.translate("Two players") : "TWO PLAYERS";
     this.setGameHeader(gameType, mode);

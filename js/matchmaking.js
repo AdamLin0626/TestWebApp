@@ -14,6 +14,8 @@ export const MATCH_GAME_TYPES = Object.freeze([
   'blackjack',
   'liarsdice',
   'ninetynine',
+  'guesswho',
+  'dominoes',
 ]);
 
 const ACTIONS = new Set(['offer', 'accept', 'decline', 'counter']);

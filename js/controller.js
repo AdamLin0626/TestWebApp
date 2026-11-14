@@ -22,8 +22,9 @@ import { MemoryController } from "./games/memory/controller.js";
 import { GameSfx } from "./game-sfx.js";
 import { MatchmakingFlow, MATCH_GAME_TYPES } from "./matchmaking.js";
 import { CorePlayController } from "./games/coreplay/controller.js";
+import { mountDraggableFab } from "./chat-fab.js";
 
-const CORE_GAME_TYPES = new Set(["sudoku", "mancala", "slapjack", "blackjack", "liarsdice", "ninetynine"]);
+const CORE_GAME_TYPES = new Set(["sudoku", "mancala", "slapjack", "blackjack", "liarsdice", "ninetynine", "guesswho", "dominoes"]);
 const STANDALONE_GAME_TYPES = new Set(["chess", "battleship", "airhockey", "connectfour", "reversi", "memory", ...CORE_GAME_TYPES]);
 const STANDALONE_PROTOCOL_GAMES = new Set(["airhockey", "connectfour", "reversi", "memory", ...CORE_GAME_TYPES]);
 
@@ -49,7 +50,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           slapjack: elements.slapjackGame,
           blackjack: elements.blackjackGame,
           liarsdice: elements.liarsDiceGame,
-          ninetynine: elements.ninetynineGame
+          ninetynine: elements.ninetynineGame,
+          guesswho: elements.guessWhoGame,
+          dominoes: elements.dominoesGame
         };
         const standaloneFactories = {
           chess: ChessController,
@@ -122,7 +125,9 @@ document.addEventListener("DOMContentLoaded", async () => {
           slapjack: "Slapjack",
           blackjack: "Blackjack",
           liarsdice: "Liar's Dice",
-          ninetynine: "99"
+          ninetynine: "99",
+          guesswho: "Guess Who?",
+          dominoes: "Dominoes"
         };
         const playActionSound = (actor) => gameSfx.play(actor === "opponent" ? "opponent" : "self");
         const setConnection = (connectionState, text) => {
@@ -962,6 +967,7 @@ document.addEventListener("DOMContentLoaded", async () => {
           roomChatUnread += 1;
           view.setChatUnread(roomChatUnread);
           view.showChatNotification({ name: message.playerName, text: message.text });
+          window.requestAnimationFrame(positionChatNotice);
           if (roomChatNoticeTimer) window.clearTimeout(roomChatNoticeTimer);
           roomChatNoticeTimer = window.setTimeout(() => {
             roomChatNoticeTimer = 0;
@@ -1344,6 +1350,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         elements.blackjackTile.addEventListener("click", () => selectStandaloneGame("blackjack"));
         elements.liarsDiceTile.addEventListener("click", () => selectStandaloneGame("liarsdice"));
         elements.ninetynineTile.addEventListener("click", () => selectStandaloneGame("ninetynine"));
+        elements.guessWhoTile.addEventListener("click", () => selectStandaloneGame("guesswho"));
+        elements.dominoesTile.addEventListener("click", () => selectStandaloneGame("dominoes"));
         elements.yahtzeeTile.addEventListener("click", () => selectGame("yahtzee"));
         elements.create.addEventListener("click", () => {
           isRoomHost = true;
@@ -1563,7 +1571,28 @@ document.addEventListener("DOMContentLoaded", async () => {
           const button = event.target.closest("[data-gesture]");
           if (button) pairingFlow?.chooseGesture(button.dataset.gesture);
         });
-        elements.chatLauncher.addEventListener("click", () => setRoomChatOpen(!roomChatOpen));
+        function positionChatNotice() {
+          if (elements.chatNotice.hidden) return;
+          const fabRect = elements.chatLauncher.getBoundingClientRect();
+          const noticeRect = elements.chatNotice.getBoundingClientRect();
+          const width = noticeRect.width || Math.min(310, window.innerWidth - 24);
+          const height = noticeRect.height || 58;
+          const maxLeft = Math.max(0, window.innerWidth - width);
+          const maxTop = Math.max(0, window.innerHeight - height);
+          const onRight = fabRect.left + fabRect.width / 2 >= window.innerWidth / 2;
+          const proposedLeft = onRight ? fabRect.right - width : fabRect.left;
+          let top = fabRect.top - height - 12;
+          if (top < 12) top = fabRect.bottom + 12;
+          elements.chatNotice.style.left = `${Math.max(0, Math.min(maxLeft, proposedLeft))}px`;
+          elements.chatNotice.style.right = "auto";
+          elements.chatNotice.style.top = `${Math.max(0, Math.min(maxTop, top))}px`;
+          elements.chatNotice.style.bottom = "auto";
+          elements.chatNotice.style.transform = "none";
+        }
+        mountDraggableFab(elements.chatLauncher, {
+          onClick: () => setRoomChatOpen(!roomChatOpen),
+          onPositionChange: positionChatNotice
+        });
         elements.chatClose.addEventListener("click", () => setRoomChatOpen(false));
         elements.chatNotice.addEventListener("click", () => setRoomChatOpen(true));
         elements.chatForm.addEventListener("submit", async (event) => {

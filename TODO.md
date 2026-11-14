@@ -80,3 +80,22 @@
 ## 六款接入验证记录
 - 静态检查通过：四份新增翻译 overlay 均可解析；CorePlayView 直接引用的 51 个文案键在四语系齐全；六款 tile/root ID 与 Air Hockey hidden 检查通过；`git diff --check` 通过。
 - 尚未执行 JavaScript 语法／单元测试或双客户端实机联测：当前电脑没有可用 JavaScript 执行器，且本地浏览器功能不可用。
+
+
+## 猜人物
+- [x] 新增「猜人物」游戏：参考角色网格设计，提供 30 位角色卡和性别、眼睛颜色、发型、发色、肤色、眼镜、胡须等是／否筛选；轮流提问、缩小候选并猜测角色，猜错判负。1P 对电脑，2P 用现有配对流程；秘密角色不得经公开同步状态泄露，并补齐四语系文案。
+- [x] 角色卡使用可访问、响应式的原生矢量头像，支持明确标记已排除候选。
+
+## 骨牌
+- [x] 新增「骨牌」游戏：以 double-six 28 张牌、双方各发 7 张开始；按两端点数匹配出牌，无合法牌时抽牌，牌堆空后过牌；两人连续无法出牌时比较剩余牌点数，低者获胜。逐局累计赢得的点数，先达到 150 分者获胜。
+- [x] 1P 支持电脑选牌、抽牌与过牌；2P 使用既有邀请／接受／拒绝／猜拳、房主权威动作同步及重开／离开流程，且对手手牌只通过个人 private snapshot 下发。
+- [x] 骨牌桌面与玩家手牌使用适配手机的可操作牌面，并补齐 en、ja、zh-Hans、zh-Hant 文案。
+
+## 猜人物与骨牌验证记录
+- 静态验证通过：四份语言 overlay 可解析且 57 项新增文案键齐全；首页卡片／root ID 唯一；Air Hockey 仍隐藏；两个公开状态方法分别剔除秘密角色及遮蔽对手手牌；`git diff --check`、冲突标记和尾随空白检查通过。
+- 尚未执行 JavaScript 语法／单元测试或浏览器实机验证：本机未发现 JavaScript 执行器，LSP 启动被 Windows 拒绝访问，且此会话未启用本地浏览器。
+
+
+## 聊天室可拖曳悬浮按钮（Draggable FAB）
+- [x] 「position: fixed，预设右下角（bottom: 20px; right: 20px），圆形设计，z-index: 9999，设定 touch-action: none 与 user-select: none；同时支援滑鼠（mousedown/move/up）与触控（touchstart/move/end），限制移动范围不超出 window.innerWidth / innerHeight；记录起始与结束位移，总位移 < 5px 才触发点击；拖曳期间 transition 为 none，放开时按中心点磁吸左右边缘并留 20px 安全边距，以 `all 0.3s cubic-bezier(0.25, 1, 0.5, 1)` 动画；磁吸后将 left/top 存入 localStorage，挂载时优先还原并验证仍在视窗范围内。」已新增 `js/chat-fab.js` 原生组件并接入聊天室开关；未读通知会随 FAB 位置调整。
+- 验证：规格静态检查、3 个改动文件的尾随空白／冲突标记检查及 `git diff --check` 通过；由于本机无 JavaScript 执行器且 LSP launcher 被 Windows 拒绝访问，未能运行 JavaScript 语法/单元测试或浏览器实机操作。

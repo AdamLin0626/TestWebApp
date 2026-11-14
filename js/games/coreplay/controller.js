@@ -4,6 +4,8 @@ import { SlapjackModel } from "../slapjack/model.js";
 import { BlackjackModel } from "../blackjack/model.js";
 import { LiarsDiceModel } from "../liarsdice/model.js";
 import { NinetyNineModel } from "../ninetynine/model.js";
+import { GuessWhoModel } from "../guesswho/model.js";
+import { DominoesModel } from "../dominoes/model.js";
 import { CorePlayView } from "./view.js";
 
 const MODEL_FACTORIES = Object.freeze({
@@ -12,9 +14,11 @@ const MODEL_FACTORIES = Object.freeze({
   slapjack: () => new SlapjackModel(),
   blackjack: () => new BlackjackModel(),
   liarsdice: () => new LiarsDiceModel(),
-  ninetynine: () => new NinetyNineModel()
+  ninetynine: () => new NinetyNineModel(),
+  guesswho: () => new GuessWhoModel(),
+  dominoes: () => new DominoesModel()
 });
-const PRIVATE_GAMES = new Set(["slapjack", "liarsdice", "ninetynine"]);
+const PRIVATE_GAMES = new Set(["slapjack", "liarsdice", "ninetynine", "guesswho", "dominoes"]);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
 export class CorePlayController {
@@ -79,7 +83,12 @@ export class CorePlayController {
       blackjackAction: (action) => this.blackjackAction(action),
       bid: (quantity, face) => this.bid(quantity, face),
       challenge: () => this.challenge(),
-      playNinetyNine: (handIndex, chosenTotal) => this.playNinetyNine(handIndex, chosenTotal)
+      playNinetyNine: (handIndex, chosenTotal) => this.playNinetyNine(handIndex, chosenTotal),
+      askGuessWho: (questionId) => this.askGuessWho(questionId),
+      guessCharacter: (characterId) => this.guessCharacter(characterId),
+      playDomino: (tileId, side) => this.playDomino(tileId, side),
+      drawDomino: () => this.drawDomino(),
+      passDomino: () => this.passDomino()
     }, t);
     this.players = this._makeSeats(players);
   }
@@ -162,6 +171,11 @@ export class CorePlayController {
   bid(quantity, face) { return this._sendAction("liars-bid", { quantity, face }); }
   challenge() { return this._sendAction("liars-challenge", {}); }
   playNinetyNine(handIndex, chosenTotal) { return this._sendAction("ninetynine-play", { handIndex, chosenTotal }); }
+  askGuessWho(questionId) { return this._sendAction("guesswho-question", { questionId }); }
+  guessCharacter(characterId) { return this._sendAction("guesswho-guess", { characterId }); }
+  playDomino(tileId, side) { return this._sendAction("dominoes-play", { tileId, side }); }
+  drawDomino() { return this._sendAction("dominoes-draw", {}); }
+  passDomino() { return this._sendAction("dominoes-pass", {}); }
 
   _sendAction(action, data) {
     const visibleEngine = this._displayEngine();
@@ -220,6 +234,13 @@ export class CorePlayController {
       else if (action === "liars-challenge") next = this.model.challenge(this.engine, actorId);
     } else if (this.gameType === "ninetynine" && action === "ninetynine-play") {
       next = this.model.playCard(this.engine, actorId, data.handIndex, { chosenTotal: data.chosenTotal });
+    } else if (this.gameType === "guesswho") {
+      if (action === "guesswho-question") next = this.model.askQuestion(this.engine, actorId, data.questionId);
+      else if (action === "guesswho-guess") next = this.model.guessCharacter(this.engine, actorId, data.characterId);
+    } else if (this.gameType === "dominoes") {
+      if (action === "dominoes-play") next = this.model.playTile(this.engine, actorId, data.tileId, data.side);
+      else if (action === "dominoes-draw") next = this.model.drawTile(this.engine, actorId);
+      else if (action === "dominoes-pass") next = this.model.passTurn(this.engine, actorId);
     }
     if (!next) return false;
     this.engine = next;
@@ -475,6 +496,26 @@ export class CorePlayController {
       }
       candidates.sort((left, right) => right.score - left.score);
       return candidates[0] || null;
+    }
+    if (this.gameType === "guesswho") {
+      const candidates = this.engine.candidates.p2 || [];
+      if (candidates.length <= 1) return candidates[0] ? { action: "guesswho-guess", data: { characterId: candidates[0] } } : null;
+      const question = this.model.getBestQuestion(this.engine, "p2");
+      if (question) return { action: "guesswho-question", data: { questionId: question.id } };
+      return { action: "guesswho-guess", data: { characterId: candidates[0] } };
+    }
+    if (this.gameType === "dominoes") {
+      const moves = this.model.getPlayableMoves(this.engine, "p2");
+      if (moves.length) {
+        const ranked = moves.map((move) => {
+          const tile = this.engine.hands.p2.find((item) => item.id === move.tileId);
+          const score = (tile?.a || 0) + (tile?.b || 0) + (tile?.a === tile?.b ? 2 : 0);
+          return { ...move, score };
+        }).sort((left, right) => right.score - left.score);
+        return { action: "dominoes-play", data: { tileId: ranked[0].tileId, side: ranked[0].side } };
+      }
+      if (this.engine.boneyard.length) return { action: "dominoes-draw", data: {} };
+      return { action: "dominoes-pass", data: {} };
     }
     return null;
   }

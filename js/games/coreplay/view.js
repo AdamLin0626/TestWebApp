@@ -1,3 +1,5 @@
+import { GUESS_WHO_CHARACTERS, GUESS_WHO_QUESTIONS } from "../guesswho/model.js";
+
 function el(documentRef, tag, className = "", text = null) {
   const node = documentRef.createElement(tag);
   if (className) node.className = className;
@@ -30,6 +32,52 @@ function cardLabel(card) {
   if (!card || card.hidden) return "◆◆";
   const suits = { S: "♠", H: "♥", D: "♦", C: "♣" };
   return `${card.rank}${suits[card.suit] || ""}`;
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const SKIN_COLORS = { light: "#f4c59d", medium: "#b87552", dark: "#784631" };
+const HAIR_COLORS = { black: "#282126", brown: "#75432f", blonde: "#edbf3e", red: "#c75b2c", gray: "#c4c9d9" };
+const EYE_COLORS = { blue: "#428bb7", green: "#629668", brown: "#593b2b" };
+
+function svgElement(documentRef, tag, attributes = {}) {
+  const node = documentRef.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, String(value));
+  return node;
+}
+
+function characterPortrait(documentRef, character) {
+  const svg = svgElement(documentRef, "svg", { viewBox: "0 0 100 88", class: "core-character-portrait", role: "img", "aria-label": character.name });
+  const shape = (tag, attributes) => svg.append(svgElement(documentRef, tag, attributes));
+  const hair = HAIR_COLORS[character.hairColor] || HAIR_COLORS.brown;
+  const skin = SKIN_COLORS[character.skinTone] || SKIN_COLORS.light;
+  shape("rect", { x: 0, y: 0, width: 100, height: 88, rx: 14, fill: "#fff9ed" });
+  shape("path", { d: "M12 88 Q16 64 50 64 Q84 64 88 88Z", fill: character.gender === "woman" ? "#6a79a9" : "#4f7485" });
+  shape("rect", { x: 43, y: 55, width: 14, height: 16, rx: 5, fill: skin });
+  if (character.hair !== "bald") {
+    const backHair = character.hair === "long" ? "M20 37 Q18 10 50 9 Q83 12 80 43 L78 73 Q70 77 67 58 L31 58 Q28 78 20 71Z"
+      : character.hair === "curly" ? "M21 39 Q13 19 30 15 Q32 2 45 10 Q58 2 63 12 Q82 8 80 28 Q88 43 76 49 L73 58 L27 58 L24 48Z"
+        : "M22 39 Q17 10 48 9 Q77 8 79 34 L73 43 Q66 31 57 29 Q42 34 29 30Z";
+    shape("path", { d: backHair, fill: hair });
+  }
+  shape("ellipse", { cx: 50, cy: 44, rx: 24, ry: 29, fill: skin });
+  shape("circle", { cx: 25, cy: 45, r: 4, fill: skin });
+  shape("circle", { cx: 75, cy: 45, r: 4, fill: skin });
+  if (character.hair !== "bald") {
+    shape("path", { d: character.hair === "curly" ? "M27 31 Q29 11 49 15 Q70 10 74 31 Q62 22 50 27 Q39 22 27 31Z" : "M27 33 Q30 12 51 15 Q69 13 74 31 Q56 22 44 26 Q36 28 27 33Z", fill: hair });
+  }
+  for (const cx of [41, 59]) {
+    shape("ellipse", { cx, cy: 43, rx: 4.2, ry: 5, fill: "#fff" });
+    shape("circle", { cx, cy: 43, r: 2.5, fill: EYE_COLORS[character.eyes] || EYE_COLORS.brown });
+    shape("circle", { cx, cy: 43, r: 1.1, fill: "#201d1b" });
+  }
+  shape("path", { d: "M44 58 Q50 63 56 58", fill: "none", stroke: "#a75448", "stroke-width": 2, "stroke-linecap": "round" });
+  if (character.glasses) {
+    shape("rect", { x: 32, y: 36, width: 17, height: 14, rx: 5, fill: "none", stroke: "#342b39", "stroke-width": 2.5 });
+    shape("rect", { x: 51, y: 36, width: 17, height: 14, rx: 5, fill: "none", stroke: "#342b39", "stroke-width": 2.5 });
+    shape("path", { d: "M49 41 L51 41 M31 40 L27 39 M69 40 L73 39", stroke: "#342b39", "stroke-width": 2 });
+  }
+  if (character.facialHair) shape("path", { d: "M36 55 Q41 51 46 55 Q50 59 54 55 Q60 51 65 55 Q63 69 50 70 Q38 68 36 55Z", fill: hair });
+  return svg;
 }
 
 export class CorePlayView {
@@ -92,6 +140,8 @@ export class CorePlayView {
     else if (this.gameType === "blackjack") this._renderBlackjack(board, context);
     else if (this.gameType === "liarsdice") this._renderLiarsDice(board, context);
     else if (this.gameType === "ninetynine") this._renderNinetyNine(board, context);
+    else if (this.gameType === "guesswho") this._renderGuessWho(board, context);
+    else if (this.gameType === "dominoes") this._renderDominoes(board, context);
     shell.append(board);
     this.root.replaceChildren(shell);
   }
@@ -145,6 +195,8 @@ export class CorePlayView {
       else if (this.gameType === "blackjack") value.textContent = this.t("Chips: {count}", { count: player.bankroll });
       else if (this.gameType === "liarsdice") value.textContent = this.t("Dice: {count}", { count: player.diceCount });
       else if (this.gameType === "ninetynine") value.textContent = this.t("Lives: {count}", { count: player.lives });
+      else if (this.gameType === "guesswho") value.textContent = this.t("Candidates: {count}", { count: game.candidates?.[player.id]?.length ?? 0 });
+      else if (this.gameType === "dominoes") value.textContent = this.t("Score {score} · {count} tiles", { score: game.scores?.[player.id] ?? 0, count: game.handCounts?.[player.id] ?? game.hands?.[player.id]?.length ?? 0 });
       card.append(name, value);
       scores.append(card);
     }
@@ -409,6 +461,166 @@ export class CorePlayView {
     board.append(table);
   }
 
+  _renderGuessWho(board, context) {
+    const game = context.engine;
+    const active = game.phase === "playing" && game.currentPlayerId === context.playerId && !context.pending;
+    const secret = GUESS_WHO_CHARACTERS.find((character) => character.id === game.privateCharacterId);
+    const secretPanel = el(this.document, "section", "core-secret-character");
+    if (secret) secretPanel.append(characterPortrait(this.document, secret));
+    const secretCopy = el(this.document, "div", "core-secret-copy");
+    secretCopy.append(el(this.document, "span", "core-kicker", this.t("Your secret character")));
+    secretCopy.append(el(this.document, "strong", "", secret ? this.t(secret.name) : this.t("Private character")));
+    secretPanel.append(secretCopy);
+    board.append(secretPanel);
+
+    const questions = el(this.document, "section", "core-question-panel");
+    questions.append(el(this.document, "h3", "core-subheading", this.t("Ask a yes/no question")));
+    const questionGrid = el(this.document, "div", "core-question-grid");
+    const candidateCharacters = (game.candidates?.[context.playerId] || []).map((id) => GUESS_WHO_CHARACTERS.find((character) => character.id === id));
+    for (const question of GUESS_WHO_QUESTIONS) {
+      const alreadyAsked = game.askedQuestions?.[context.playerId]?.includes(question.id);
+      const possibleAnswers = new Set(candidateCharacters.map((character) => character?.[question.attribute] === question.value));
+      const informative = possibleAnswers.size > 1;
+      questionGrid.append(actionButton(this.document, this.t(question.label), "guesswho-question", !active || alreadyAsked || !informative, { question: question.id }));
+    }
+    questions.append(questionGrid);
+    board.append(questions);
+
+    if (game.lastAction?.type === "question") {
+      const action = game.lastAction;
+      const question = GUESS_WHO_QUESTIONS.find((item) => item.id === action.questionId);
+      board.append(el(this.document, "p", "core-question-answer", this.t("{name} asked: {question} Answer: {answer}.", {
+        name: this._name(action.playerId, context),
+        question: question ? this.t(question.label) : "",
+        answer: this.t(action.answer ? "Yes" : "No")
+      })));
+    } else if (game.lastAction?.type === "guess") {
+      const guessed = GUESS_WHO_CHARACTERS.find((character) => character.id === game.lastAction.characterId);
+      board.append(el(this.document, "p", "core-question-answer", this.t("{name} guessed {character}: {result}.", {
+        name: this._name(game.lastAction.playerId, context),
+        character: guessed ? this.t(guessed.name) : "",
+        result: this.t(game.lastAction.correct ? "Correct" : "Not quite")
+      })));
+    }
+
+    const remaining = new Set(game.candidates?.[context.playerId] || []);
+    const grid = el(this.document, "div", "core-character-grid");
+    grid.setAttribute("role", "group");
+    grid.setAttribute("aria-label", this.t("Character candidates"));
+    for (const character of GUESS_WHO_CHARACTERS) {
+      const candidate = remaining.has(character.id);
+      const card = actionButton(this.document, "", "guesswho-guess", !candidate || !active, { character: character.id });
+      card.classList.add("core-character-card");
+      if (!candidate) card.classList.add("is-eliminated");
+      card.setAttribute("aria-label", this.t("Guess {name}", { name: this.t(character.name) }));
+      card.append(characterPortrait(this.document, character));
+      card.append(el(this.document, "span", "core-character-name", this.t(character.name)));
+      grid.append(card);
+    }
+    board.append(grid);
+  }
+
+  _dominoFace(value) {
+    const pattern = {
+      0: [], 1: [4], 2: [0, 8], 3: [0, 4, 8],
+      4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 3, 6, 2, 5, 8]
+    }[value] || [];
+    const face = el(this.document, "span", "core-domino-half");
+    face.setAttribute("aria-label", String(value));
+    const dots = new Set(pattern);
+    for (let index = 0; index < 9; index += 1) {
+      const dot = el(this.document, "i", dots.has(index) ? "has-pip" : "");
+      dot.setAttribute("aria-hidden", "true");
+      face.append(dot);
+    }
+    return face;
+  }
+
+  _dominoTile(tile, { hidden = false, action = "", side = "right", disabled = false } = {}) {
+    const item = action
+      ? actionButton(this.document, "", action, disabled, { tile: tile?.id, side })
+      : el(this.document, "span", "core-domino-tile");
+    item.classList.add("core-domino-tile");
+    if (hidden) {
+      item.classList.add("is-hidden");
+      item.setAttribute("aria-label", this.t("Hidden domino"));
+      item.append(el(this.document, "span", "core-domino-back-mark", "◆"));
+    } else {
+      item.setAttribute("aria-label", this.t("Domino {left} and {right}", { left: tile.a, right: tile.b }));
+      item.append(this._dominoFace(tile.a), this._dominoFace(tile.b));
+    }
+    return item;
+  }
+
+  _renderDominoes(board, context) {
+    const game = context.engine;
+    const active = game.phase === "playing" && game.currentPlayerId === context.playerId && !context.pending;
+    const table = el(this.document, "div", "core-domino-table");
+    table.append(el(this.document, "div", "core-domino-target", this.t("First to {score} points wins", { score: game.targetScore })));
+
+    const opponentId = context.playerId === "p1" ? "p2" : "p1";
+    const backs = el(this.document, "div", "core-domino-opponent-hand");
+    backs.append(el(this.document, "span", "core-kicker", this.t("{name}'s hand", { name: this._name(opponentId, context) })));
+    const opponentCount = game.handCounts?.[opponentId] ?? game.hands?.[opponentId]?.length ?? 0;
+    const backRow = el(this.document, "div", "core-domino-back-row");
+    for (let index = 0; index < Math.min(opponentCount, 14); index += 1) backRow.append(this._dominoTile(null, { hidden: true }));
+    backs.append(backRow);
+    table.append(backs);
+
+    const chain = el(this.document, "div", "core-domino-chain");
+    chain.setAttribute("role", "group");
+    chain.setAttribute("aria-label", this.t("Domino chain; left end {left}, right end {right}", {
+      left: game.leftEnd ?? "—", right: game.rightEnd ?? "—"
+    }));
+    if (!game.chain.length) chain.append(el(this.document, "p", "core-note", this.t("Play any tile to start the chain.")));
+    for (const tile of game.chain) chain.append(this._dominoTile(tile));
+    table.append(chain);
+
+    const ownHand = Array.isArray(game.hands?.[context.playerId]) ? game.hands[context.playerId] : [];
+    const moves = new Map();
+    for (const tile of ownHand) {
+      const sides = !game.chain.length ? ["right"] : [
+        ...([tile.a, tile.b].includes(game.leftEnd) ? ["left"] : []),
+        ...([tile.a, tile.b].includes(game.rightEnd) ? ["right"] : [])
+      ];
+      if (sides.length) moves.set(tile.id, sides);
+    }
+    const handPanel = el(this.document, "section", "core-domino-own-hand");
+    handPanel.append(el(this.document, "h3", "core-subheading", this.t("Your tiles")));
+    const preferredSide = this.selectedDominoSide || "right";
+    const sidePicker = el(this.document, "div", "core-actions core-domino-side-picker");
+    for (const side of ["left", "right"]) {
+      const control = actionButton(this.document, this.t(side === "left" ? "Left end" : "Right end"), "domino-side", false, { side });
+      if (preferredSide === side) control.classList.add("is-selected");
+      sidePicker.append(control);
+    }
+    handPanel.append(sidePicker);
+    const handRow = el(this.document, "div", "core-domino-hand");
+    for (const tile of ownHand) {
+      const availableSides = moves.get(tile.id) || [];
+      const side = availableSides.includes(preferredSide) ? preferredSide : availableSides[0] || preferredSide;
+      const tileButton = this._dominoTile(tile, { action: "domino-play", side, disabled: !active || !availableSides.length });
+      handRow.append(tileButton);
+    }
+    if (!ownHand.length) handRow.append(el(this.document, "p", "core-note", this.t("No tiles in hand.")));
+    handPanel.append(handRow);
+    const noMoves = moves.size === 0;
+    const actions = el(this.document, "div", "core-actions");
+    actions.append(actionButton(this.document, this.t("Draw tile"), "domino-draw", !active || !noMoves || game.boneyard.length === 0));
+    actions.append(actionButton(this.document, this.t("Pass turn"), "domino-pass", !active || !noMoves || game.boneyard.length > 0));
+    actions.append(el(this.document, "span", "core-kicker", this.t("Draw pile: {count}", { count: game.boneyard.length })));
+    handPanel.append(actions);
+    table.append(handPanel);
+
+    if (game.lastRound) {
+      const winnerName = game.lastRound.winnerId ? this._name(game.lastRound.winnerId, context) : this.t("Nobody");
+      table.append(el(this.document, "p", "core-domino-round-note", this.t("Round {round}: {name} scored {points} points.", {
+        round: game.roundNumber - (game.phase === "playing" ? 1 : 0), name: winnerName, points: game.lastRound.points
+      })));
+    }
+    board.append(table);
+  }
+
   _onClick(event) {
     const button = event.target.closest("button[data-action]");
     if (!button || !this.root.contains(button) || !this.context) return;
@@ -438,6 +650,19 @@ export class CorePlayView {
     } else if (action === "play-99") {
       const chosenTotal = Number(this.root.querySelector('[data-field="chosen-total"]')?.value);
       this.handlers.playNinetyNine?.(Number(button.dataset.index), chosenTotal);
+    } else if (action === "guesswho-question") {
+      this.handlers.askGuessWho?.(button.dataset.question);
+    } else if (action === "guesswho-guess") {
+      this.handlers.guessCharacter?.(button.dataset.character);
+    } else if (action === "domino-play") {
+      this.handlers.playDomino?.(button.dataset.tile, button.dataset.side);
+    } else if (action === "domino-draw") {
+      this.handlers.drawDomino?.();
+    } else if (action === "domino-pass") {
+      this.handlers.passDomino?.();
+    } else if (action === "domino-side") {
+      this.selectedDominoSide = button.dataset.side;
+      this.render(this.context);
     }
   }
 

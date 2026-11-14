@@ -63,3 +63,15 @@ Air Hockey 僅從首頁選單隱藏入口，保留現有模組和程式碼，不
 沿用当前单页 HTML、CSS、原生 ES modules 与既有 Web Audio／HiveMQ，不增加前端套件、服务或数据库。将六款已完成的 Model/Controller 接入首页卡片、共用游戏标题列、胜负弹窗、离开／重开及 MatchmakingFlow；新增 `js/games/coreplay/controller.js` 与 `view.js` 作为薄适配层，规则仍由 `sudoku`、`mancala`、`slapjack`、`blackjack`、`liarsdice`、`ninetynine` 各自模型负责。
 
 1P 提供 Sudoku 解谜与提示、Mancala／Slapjack／Liar's Dice／99 的电脑对手，以及玩家对庄家的 Blackjack；2P 经既有邀请／接受／拒绝／猜拳流程开始。2P 由房主处理动作并同步快照；Sudoku 作为轮流填写的共享谜题，Blackjack 作为多人同桌对庄家，其他游戏按各自规则轮流或即时操作。Sudoku 解答、Blackjack 底牌、Slapjack 手牌、Liar's Dice 骰面及 99 手牌使用遮蔽或逐玩家私有快照，不向另一端泄露。沿用共用控制器协调离开／重开与胜负公告；所有新增入口、操作及状态文案补齐 en、ja、zh-Hans、zh-Hant。Air Hockey 保持隐藏且排除于可选配对游戏，原有代码不删改。
+
+
+## 猜人物与骨牌
+沿用现有 `CorePlayController`／`CorePlayView` 适配层及相同 1P／2P 配对协议，新增 `js/games/guesswho/model.js` 与 `js/games/dominoes/model.js` 核心规则模块；两个游戏纳入现有 coreplay factory、通用标题列、音效、结果和重开流程，不增添独立依赖。
+
+「猜人物」采用参考图中的 30 张角色卡（六行五列）及属性筛选：性别、眼睛颜色、发型、发色、肤色、眼镜、胡须。双方各有一个秘密角色，提问方按属性询问并依据是／否缩小自己的候选集；可以随时猜角色，猜错即负。角色以原生 SVG 组件绘制，做成可点击、可排除、含无障碍名称的角色卡；问题和结果使用四语系文案。电脑会选择区分度较高的问题并在候选较少时猜测。秘密角色只发送给对应玩家的 private snapshot；公开状态不包含任何人的秘密角色。
+
+「骨牌」依参考图做双人抽牌桌面：double-six 28 张牌，各发 7 张，牌链两端匹配后出牌；无合法牌时从牌堆抽牌，牌堆空且无合法牌时过牌；双方连续无牌可出则按剩余点数低者赢小局。每局计分纳入目标 150 分，先达到目标者获胜。单人电脑以较低剩余点数和匹配端点选择牌，必要时连续抽牌或过牌。手牌以 viewer-specific private snapshot 隔离，桌面牌链及比分使用公共状态；牌面以可旋转、适配窄屏的点数 tile 绘制。
+
+
+### 可拖曳聊天室悬浮按钮
+聊天室入口改为固定的橘色圆形 FAB，默认离视窗右侧与底部各 20px，采用原生模块 `js/chat-fab.js` 与 `mountDraggableFab()`。按钮同时监听鼠标及触控拖曳，拖动坐标按 `window.innerWidth/innerHeight` 限制在视窗内；终点位移少于 5px 视为点击，实际拖曳释放时以按钮中心决定吸附左右侧，保留 20px 安全边距并套用 0.3 秒弹性过渡。最终坐标写入 localStorage，挂载时只还原有效且仍可见的位置；聊天室通知锚定在按钮附近，原有 2P 房间限制、抽屉开关及未读行为不变。
